@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextLexer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextBaseListener.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextListener.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextBaseVisitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextVisitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ir\commonevent.cpp" />
+    <ClCompile Include="..\ir\commonfile.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextLexer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextParser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextBaseListener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextListener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextBaseVisitor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\001ys\Desktop\wsp\lang\lib\woditextVisitor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ir\commonenums.hpp" />
+    <ClInclude Include="..\ir\commonevent.hpp" />
+    <ClInclude Include="..\ir\commonfile.hpp" />
+    <ClInclude Include="..\ir\customenums.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\6f3448b80caa4e8488050b8b45f19f35\woditextLexer.interp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{1E2BA2C3-FE0D-3D61-96B9-6279D4872CAB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{1148C05C-32BF-31FD-AD2E-638A190D1202}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A640161D-29B0-36A9-A5A8-53F6C7E2FAF0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

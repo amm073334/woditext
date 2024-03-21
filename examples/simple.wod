@@ -1,0 +1,12 @@
+// comment
+void test_func(int param) {
+    int test;
+    int test2;
+    test = -(4 + 1) + (2 * 3) % 5;
+    test2 = 3 / 2 - -2;
+    test = test + test2;
+}
+
+void test2() {
+    int t1;
+}

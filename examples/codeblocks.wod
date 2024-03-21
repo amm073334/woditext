@@ -1,0 +1,17 @@
+// comment
+void test_func() {
+    int var = 0;
+    loop (1 + 2) {
+        if (var % 2 == 0) {
+            var += 1;
+        }
+    }
+    
+    { return var; }
+}
+
+void test2(int param) {
+    int cself;
+    cself = 3;
+    return cself + param;
+}

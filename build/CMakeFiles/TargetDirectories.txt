@@ -1,0 +1,6 @@
+C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/antlr4_runtime.dir
+C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/antlr4_runtime-build_static.dir
+C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/antlr4_runtime-build_shared.dir
+C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/wtc.dir
+C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/ZERO_CHECK.dir

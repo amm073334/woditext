@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\bb8015cfffd04794ea9fc08a1cfdffe1\antlr4_runtime-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\91352ebe5ff8648fd84d046f03524c4e\antlr4_runtime-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\19c0791a187de35e331a102d141e5ba9\antlr4_runtime.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\001ys\Desktop\wsp\lang\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\001ys\Desktop\wsp\lang\build\CMakeFiles\antlr4_runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{1E2BA2C3-FE0D-3D61-96B9-6279D4872CAB}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
