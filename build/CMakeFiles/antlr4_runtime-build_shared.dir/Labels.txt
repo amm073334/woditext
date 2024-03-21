@@ -1,6 +1,0 @@
-# Target labels
- antlr4_runtime
-# Source files and their labels
-C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/antlr4_runtime-build_shared
-C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/19c0791a187de35e331a102d141e5ba9/antlr4_runtime-build_shared.rule
-C:/Users/001ys/Desktop/wsp/lang/build/CMakeFiles/bb8015cfffd04794ea9fc08a1cfdffe1/antlr4_runtime-build_shared.rule
