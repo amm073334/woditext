@@ -8,6 +8,13 @@ CommonEvent::CommonEvent() {
     default_args.fill(0);
 }
 
+CommonEvent::~CommonEvent() {
+    // free code lines
+    for (auto iter = lines.begin(); iter != lines.end(); iter++) {
+        delete *iter;
+    }
+}
+
 /**
  * IR modification
 */
@@ -53,46 +60,49 @@ bool CommonEvent::is_codeblock_head(int32_t command) {
     }
 }
 
-
-void CommonEvent::append(int32_t command_id, std::vector<int32_t> ifields, std::vector<std::string> sfields) {
-    // handle fields
-    Line l;
-    l.int_fields.push_back(command_id);
-    for (size_t i = 0; i < ifields.size(); i++) {
-        l.int_fields.push_back(ifields.at(i));
-    }
-    l.str_fields = sfields;
-    
-    // handle indent
+void CommonEvent::update_indent(Line* l) {
     if (lines.empty()) {
-        l.indent_level = 0;
+        l->indent_level = 0;
     } else {
-        char prev_indent = lines.back().indent_level;
-        int32_t prev_command = lines.back().int_fields.at(0);
+        int32_t command_id = l->int_fields.at(0);
+        char prev_indent = lines.back()->indent_level;
+        int32_t prev_command = lines.back()->int_fields.at(0);
         
         if (modifies_its_indent(command_id)) {
             if (modifies_its_indent(prev_command) || is_codeblock_head(prev_command)) {
-                l.indent_level = prev_indent;
+                l->indent_level = prev_indent;
             } else {
-                l.indent_level = prev_indent - 1;
+                l->indent_level = prev_indent - 1;
             }
         } else {
             if (increases_next_indent(prev_command)) {
-                l.indent_level = prev_indent + 1;
+                l->indent_level = prev_indent + 1;
             } else {
-                l.indent_level = prev_indent;
+                l->indent_level = prev_indent;
             }
         }    
     }
+}
+
+void CommonEvent::append(int32_t command_id, std::vector<int32_t> ifields, std::vector<std::string> sfields) {
+    // handle fields
+    Line* l = new Line;
+    l->int_fields.push_back(command_id);
+    for (size_t i = 0; i < ifields.size(); i++) {
+        l->int_fields.push_back(ifields.at(i));
+    }
+    l->str_fields = sfields;
+    
+    // handle indent
+    update_indent(l);
     
     lines.push_back(l);
 }
 
-void CommonEvent::a_arith(int32_t dest, int32_t arg0, int32_t arg1, assign_type assign, arith_op op) {
-    const int32_t command = 121;
-    append(command, {dest, arg0, arg1, assign | op}, {});
+void CommonEvent::append(Line* l) {
+    update_indent(l);
+    lines.push_back(l);
 }
-
 
 
 /**
@@ -116,19 +126,22 @@ void CommonEvent::emit(std::string in) {
     emit('\x00');
 }
 
-void CommonEvent::emit_line(Line l) {
-    char num_ifields = l.int_fields.size();
+void CommonEvent::emit_line(Line* l) {
+    // if line has some kind of unique data representation, ask it to update its base data members first
+    l->update_base_data();
+
+    char num_ifields = l->int_fields.size();
     emit(num_ifields);
     for (size_t i = 0; i < num_ifields; i++) {
-        emit(l.int_fields.at(i));
+        emit(l->int_fields.at(i));
     }
 
-    emit(l.indent_level);
+    emit(l->indent_level);
 
-    char num_sfields = l.str_fields.size();
+    char num_sfields = l->str_fields.size();
     emit(num_sfields);
     for (size_t i = 0; i < num_sfields; i++) {
-        emit(l.str_fields.at(i));
+        emit(l->str_fields.at(i));
     }
 
     emit('\x00');

@@ -9,7 +9,6 @@
 #include "woditextBaseVisitor.h"
 #include "commonfile.hpp"
 #include "commonevent.hpp"
-#include "customenums.hpp"
 #include "symboltable.hpp"
 
 class CommonGen : public woditextBaseVisitor {
@@ -65,10 +64,12 @@ public:
 		int saved_temp_pos = temp_stackpos;
 		
 		std::string varname = ctx->lhs()->ID()->getText();
+
 		int32_t rhs = std::any_cast<int32_t>(ctx->expr()->accept(this));
 
 		// replace the temp destination of the most recent arith operation to point to varname's cself
-		current_event->lines.back().int_fields.at(1) = st.lookup(varname);
+        if (current_event->lines.size() <= 0) error(ctx, "fatal");
+		dynamic_cast<ArithLine*>(current_event->lines.back())->dest = st.lookup(varname);
 
 		temp_stackpos = saved_temp_pos;
 		return std::any();
@@ -96,7 +97,7 @@ public:
 		int32_t arg = std::any_cast<int32_t>(ctx->expr()->accept(this));
 		
 		int32_t temp_var = new_temp();
-		current_event->a_arith(temp_var, 0, arg, assign_eq, op_minus);
+        current_event->append(new ArithLine(temp_var, 0, arg, ArithLine::assign_eq, ArithLine::op_minus));
 
 		return temp_var;
 	}
@@ -110,15 +111,15 @@ public:
 		if (arg0 >= yobidasi_threshold);
 
 		int32_t temp_var = new_temp();
-		arith_op op;
-		if		(ctx->OP_PLUS())	op = op_plus;
-		else if (ctx->OP_MINUS())	op = op_minus;
-		else if (ctx->OP_TIMES())	op = op_times;
-		else if (ctx->OP_DIV())		op = op_div;
-		else if (ctx->OP_MOD())		op = op_mod;
-		else exit(1);
+		ArithLine::arith_op op;
+		if		(ctx->OP_PLUS())	op = ArithLine::op_plus;
+		else if (ctx->OP_MINUS())	op = ArithLine::op_minus;
+		else if (ctx->OP_TIMES())	op = ArithLine::op_times;
+		else if (ctx->OP_DIV())		op = ArithLine::op_div;
+		else if (ctx->OP_MOD())		op = ArithLine::op_mod;
+		else error(ctx, "no matching op");
 
-		current_event->a_arith(temp_var, arg0, arg1, assign_eq, op);
+		current_event->append(new ArithLine(temp_var, arg0, arg1, ArithLine::assign_eq, op));
 		
 		return temp_var;
 	}

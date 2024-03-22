@@ -5,26 +5,14 @@
 #include <array>
 #include <utility>
 #include "commonenums.hpp"
-#include "customenums.hpp"
-
-/**
- * A line of code is represented with a list of integers and
- * a list of strings, along with an indent level. There is
- * always at least one integer, which is the command ID.
- * 
- * If the indent level is malformed, the common will not load.
-*/
-struct Line {
-    std::vector<int32_t> int_fields;
-    std::vector<std::string> str_fields;
-    char indent_level = 0;
-};
+#include "line.hpp"
 
 typedef std::vector<std::pair<std::string, int32_t>> EnumList;
 
 class CommonEvent {    
 public:
     CommonEvent();
+    ~CommonEvent();
 
     /**
      * Append an arbitrary line of code to the end of the common. 
@@ -36,13 +24,11 @@ public:
     void append(int32_t command_id, std::vector<int32_t> ifields, std::vector<std::string> sfields);
 
     /**
-     * Append an arithmetic operation to the end of the code.
-     * @param dest          Yobidasi of the place to store the result.
-     * @param arg0, arg1    Arguments to perform operation on.
-     * @param assign        Assignment operator to use.
-     * @param op            Binary operator to use.
+     * Append a line to the end of the code.
+     * Automatically handles indent level, based on the entered command.
+     * @param l             Pointer to the line to append.
     */
-    void a_arith(int32_t dest, int32_t arg0, int32_t arg1, assign_type assign, arith_op op);
+    void append(Line* l);
 
     /**
      * Emits the entire common event object to output.
@@ -124,7 +110,7 @@ public:
     /**
      * List of code lines.
     */
-    std::vector<Line> lines;
+    std::vector<Line*> lines;
 
     /**
      * Name of the return value, and which CSelf to return, from 0-99.
@@ -147,6 +133,13 @@ private:
     bool increases_next_indent(int32_t command);
     bool is_codeblock_head(int32_t command);
 
+    /**
+     * Calculates the indent of a line if appended to the end of the code.
+     * Updates the indent of the line passed in.
+     * @param l         Pointer to the line to append.
+     * @return          The result as a signed byte.
+    */
+    void update_indent(Line* l);
 
 
     /**
@@ -177,9 +170,9 @@ private:
      * an 8-bit number of string fields,
      * the array of string fields,
      * and one byte of padding.
-     * @param l The line to emit.
+     * @param l Pointer to the line to emit.
     */
-    void emit_line(Line l);
+    void emit_line(Line* l);
 
     /**
      * Emits the footer of the common event to output.
