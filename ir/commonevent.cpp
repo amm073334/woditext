@@ -64,10 +64,10 @@ void CommonEvent::update_indent(Line* l) {
     if (lines.empty()) {
         l->indent_level = 0;
     } else {
-        int32_t command_id = l->int_fields.at(0);
+        int32_t command_id = l->get_command_id();
         char prev_indent = lines.back()->indent_level;
-        int32_t prev_command = lines.back()->int_fields.at(0);
-        
+        int32_t prev_command = lines.back()->get_command_id();
+
         if (modifies_its_indent(command_id)) {
             if (modifies_its_indent(prev_command) || is_codeblock_head(prev_command)) {
                 l->indent_level = prev_indent;
@@ -100,6 +100,7 @@ void CommonEvent::append(int32_t command_id, std::vector<int32_t> ifields, std::
 }
 
 void CommonEvent::append(Line* l) {
+    l->update_base_data();
     update_indent(l);
     lines.push_back(l);
 }
@@ -127,11 +128,11 @@ void CommonEvent::emit(std::string in) {
 }
 
 void CommonEvent::emit_line(Line* l) {
-    // if line has some kind of unique data representation, ask it to update its base data members first
     l->update_base_data();
 
     char num_ifields = l->int_fields.size();
-    emit(num_ifields);
+    emit(static_cast<char>(num_ifields + 1)); // add one for the command id
+    emit(l->get_command_id());
     for (size_t i = 0; i < num_ifields; i++) {
         emit(l->int_fields.at(i));
     }

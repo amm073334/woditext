@@ -68,9 +68,20 @@ public:
 		int32_t rhs = std::any_cast<int32_t>(ctx->expr()->accept(this));
 
 		// replace the temp destination of the most recent arith operation to point to varname's cself
-        if (current_event->lines.size() <= 0) error(ctx, "fatal");
-		dynamic_cast<ArithLine*>(current_event->lines.back())->dest = st.lookup(varname);
+        if (current_event->lines.size() <= 0) error(ctx, "assign: linecount assertion failed");
 
+		ArithLine* prev_line = dynamic_cast<ArithLine*>(current_event->lines.back());
+		if (prev_line) {
+			prev_line->dest = st.lookup(varname);
+
+			// update assignment operator
+			if (ctx->AS_PEQ()) prev_line->assign = ArithLine::assign_plus_eq;
+			else if (ctx->AS_MEQ()) prev_line->assign = ArithLine::assign_minus_eq;
+			else if (ctx->AS_TEQ()) prev_line->assign = ArithLine::assign_times_eq;
+			else if (ctx->AS_DEQ()) prev_line->assign = ArithLine::assign_div_eq;
+		} else { error(ctx, "assign: arith assertion failed"); }
+
+        // restore temp stack
 		temp_stackpos = saved_temp_pos;
 		return std::any();
 	}
@@ -111,7 +122,7 @@ public:
 		if (arg0 >= yobidasi_threshold);
 
 		int32_t temp_var = new_temp();
-		ArithLine::arith_op op;
+		ArithLine::arith_op op = ArithLine::op_plus;
 		if		(ctx->OP_PLUS())	op = ArithLine::op_plus;
 		else if (ctx->OP_MINUS())	op = ArithLine::op_minus;
 		else if (ctx->OP_TIMES())	op = ArithLine::op_times;
