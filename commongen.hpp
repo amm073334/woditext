@@ -113,6 +113,10 @@ public:
 		int saved_temp_pos = temp_stackpos;
 		
 		std::string varname = ctx->lhs()->ID()->getText();
+		if (ctx->lhs()->vartype()) {
+			// if lhs has a variable type, statement is a declaration; create new variable
+			new_var(varname);
+		}
 		VarSymbol* dest_symbol = st.lookup(varname);
 
 		// get assignment type
