@@ -2,6 +2,9 @@
 void test_func(int param) {
     int test;
     int test2 = 5;
+    test = param;
+    test = test2;
+    param = 1234;
     test = 123;
     test = (160000012 + 2) * 4;
     test += 2 % (1 + 2) / 4;

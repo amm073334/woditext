@@ -31,6 +31,14 @@ public:
     void append(Line* l);
 
     /**
+     * Add new parameter of the specified type.
+     * @param name  Name of the parameter.
+     * @return      Index of the new parameter, from 0-9. -1 if the max number of params is reached.
+    */
+    int new_int_param(std::string name);
+    int new_str_param(std::string name);
+
+    /**
      * Emits the entire common event object to output.
      * @param fs    The filestream to write to.
     */
@@ -39,12 +47,12 @@ public:
     /**
      * Length of the string array containing arg names.
     */
-    static const int32_t MAX_NUM_ARG_NAMES = 11;
+    static const int32_t MAX_NUM_PARAM_NAMES = 11;
 
     /**
      * Length of the byte array containing arg type flags.
     */
-    static const int32_t MAX_NUM_ARG_FLAGS = 10;
+    static const int32_t MAX_NUM_PARAM_FLAGS = 10;
 
     /**
      * Length of the array of enums; one for each of the ten args.
@@ -54,7 +62,7 @@ public:
     /**
      * Length of the array of integers containing default integer arg values.
     */
-    static const int32_t MAX_NUM_DEFAULTABLE_ARGS = 5;
+    static const int32_t MAX_NUM_DEFAULTABLE_PARAMS = 5;
     
     /**
      * Length of the array of strings containing cself names.
@@ -96,15 +104,15 @@ public:
     int32_t cond_comp_value = 0;
 
     /**
-     * Number of args.
+     * Number of parameters.
     */
-    char num_int_args = 0;
-    char num_str_args = 0;
+    char num_int_params = 0;
+    char num_str_params = 0;
 
-    std::array<std::string, MAX_NUM_ARG_NAMES> arg_names;
-    std::array<arg_flag_type, MAX_NUM_ARG_FLAGS> arg_flags;
+    std::array<std::string, MAX_NUM_PARAM_NAMES> param_names;
+    std::array<arg_flag_type, MAX_NUM_PARAM_FLAGS> param_flags;
     std::array<EnumList, MAX_NUM_ENUM_LISTS> enums;
-    std::array<int32_t, MAX_NUM_DEFAULTABLE_ARGS> default_args;
+    std::array<int32_t, MAX_NUM_DEFAULTABLE_PARAMS> default_args;
     std::array<std::string, MAX_NUM_CSELF_NAMES> cself_names;
     
     /**
@@ -114,9 +122,10 @@ public:
 
     /**
      * Name of the return value, and which CSelf to return, from 0-99.
+     * A return ID of -1 indicates no return value.
     */
     std::string return_name = "";
-    int32_t return_cself_id = 0;
+    int32_t return_cself_id = -1;
 
 private:
 

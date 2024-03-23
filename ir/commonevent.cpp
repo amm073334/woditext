@@ -4,7 +4,7 @@
 
 CommonEvent::CommonEvent() {
     // fill arrays where uninitialization would cause weird values
-    arg_flags.fill(none);
+    param_flags.fill(none);
     default_args.fill(0);
 }
 
@@ -104,6 +104,19 @@ void CommonEvent::append(Line* l) {
     lines.push_back(l);
 }
 
+int CommonEvent::new_int_param(std::string name) {
+    if (num_int_params >= 5) return -1;
+    param_names.at(num_int_params) = name;
+    cself_names.at(num_int_params) = name;
+    return num_int_params++;
+}
+
+int CommonEvent::new_str_param(std::string name) {
+    if (num_str_params >= 5) return -1;
+    param_names.at(num_str_params + 5) = name;
+    cself_names.at(num_str_params + 5) = name;
+    return 5 + num_str_params++;
+}
 
 /**
  * Code generation
@@ -160,8 +173,8 @@ void CommonEvent::emit_header() {
     emit(cond_comp_value);
 
     // argcount
-    emit(num_int_args);
-    emit(num_str_args);
+    emit(num_int_params);
+    emit(num_str_params);
 
     // common event name
     emit(name);
@@ -181,15 +194,15 @@ void CommonEvent::emit_footer() {
     emit('\x8f');
 
     // arg names
-    emit(MAX_NUM_ARG_NAMES);
-    for (size_t i = 0; i < MAX_NUM_ARG_NAMES; i++) {
-        emit(arg_names.at(i));
+    emit(MAX_NUM_PARAM_NAMES);
+    for (size_t i = 0; i < MAX_NUM_PARAM_NAMES; i++) {
+        emit(param_names.at(i));
     }
 
     // arg flags
-    emit(MAX_NUM_ARG_FLAGS);
-    for (size_t i = 0; i < MAX_NUM_ARG_FLAGS; i++) {
-        emit(arg_flags.at(i));
+    emit(MAX_NUM_PARAM_FLAGS);
+    for (size_t i = 0; i < MAX_NUM_PARAM_FLAGS; i++) {
+        emit(param_flags.at(i));
     }
 
     // argument enums: first write name strings, then write integer values
@@ -211,8 +224,8 @@ void CommonEvent::emit_footer() {
     }
 
     // initial values for args in common form
-    emit(MAX_NUM_DEFAULTABLE_ARGS);
-    for (size_t i = 0; i < MAX_NUM_DEFAULTABLE_ARGS; i++) {
+    emit(MAX_NUM_DEFAULTABLE_PARAMS);
+    for (size_t i = 0; i < MAX_NUM_DEFAULTABLE_PARAMS; i++) {
         emit(default_args.at(i));
     }
 

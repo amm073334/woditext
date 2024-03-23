@@ -6,18 +6,18 @@ commonlist
     ;
 
 common
-    : returntype ID '(' params ')' codeblock 
+    : returntype ID '(' (param (',' param)*)? ')' codeblock 
     ;
 
-params
-    : paramlist
-    |
-    ;
+// params
+//     : paramlist
+//     |
+    // ;
 
-paramlist
-    : param ',' paramlist
-    | param
-    ;
+// paramlist
+//     : param ',' paramlist
+//     | param
+//     ;
 
 param
     : vartype ID

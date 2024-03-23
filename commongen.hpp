@@ -95,16 +95,39 @@ public:
 	CommonFile cf;
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
+		// reset state
 		var_stackpos = VAR_STACK_START;
 		temp_stackpos = TEMP_STACK_START;
 		lowest_temp_stackpos = TEMP_STACK_START;
 		st = SymbolTable();
 
+		// make new commonevent
 		current_event = new CommonEvent;
 		cf.add_common(current_event);
 
 		current_event->name = ctx->ID()->getText();
-		visitChildren(ctx);
+		
+		// handle params
+		std::vector<woditextParser::ParamContext*> params = ctx->param();
+		for (auto iter = params.begin(); iter != params.end(); iter++) {
+			std::string name = (*iter)->ID()->getText();
+			if ((*iter)->vartype()->T_INT()) {
+				int index = current_event->new_int_param(name);
+				if (index < 0) error(ctx, "too many int parameters in common definition");
+				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_int));
+			}
+			else if ((*iter)->vartype()->T_STR()) {
+				int index = current_event->new_str_param(name);
+				if (index < 0) error(ctx, "too many str parameters in common definition");
+				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_str));
+			}
+			else {
+				error(ctx, "unexpected param type");
+			}
+		}
+
+		// visit code
+		ctx->codeblock()->accept(this);
 
 		return std::any();
 	}
@@ -166,12 +189,14 @@ public:
 		catch (const std::out_of_range&) {
 			error(ctx, "integer literal " + text + " is too large to fit in a signed 32-bit integer");
 		}
+		return std::any();
 	}
 
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
 		VarSymbol* symbol = st.lookup(ctx->ID()->getText());
 		if (symbol) return WodNumber(symbol->yobidasi, true);
 		else error(ctx, "id: lookup failed");
+		return std::any();
 	}
 	
 	std::any visitParenExpr(woditextParser::ParenExprContext* ctx) override {
