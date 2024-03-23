@@ -100,7 +100,6 @@ void CommonEvent::append(int32_t command_id, std::vector<int32_t> ifields, std::
 }
 
 void CommonEvent::append(Line* l) {
-    l->update_base_data();
     update_indent(l);
     lines.push_back(l);
 }

@@ -15,11 +15,16 @@ class CommonGen : public woditextBaseVisitor {
 private:
 	static const int VAR_STACK_START = 10;
 	static const int TEMP_STACK_START = 98;
+
+	// Where the engine begins to interpret integers as references.
 	static const int32_t YOBIDASI_THRESHOLD = 1000000;
+
+	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
 	CommonEvent* current_event;
 	int var_stackpos = VAR_STACK_START;
+	int highest_var_stackpos = VAR_STACK_START;
 	int temp_stackpos = TEMP_STACK_START;
 	int lowest_temp_stackpos = TEMP_STACK_START;
 	SymbolTable st;
@@ -40,25 +45,51 @@ private:
 		exit(1);
 	}
 
-	int32_t new_var() {
-		if (var_stackpos >= lowest_temp_stackpos) {
+	/**
+	* Declare a new integer variable, and insert it into the current scope.
+	* Errors if this would cause a redeclaration.
+	* @param name	Name of the variable.
+	* @return		A copy of the inserted VarSymbol.
+	*/
+	VarSymbol new_var(std::string name) {
+		if (highest_var_stackpos >= lowest_temp_stackpos) {
 			error("no more space for variables");
 		}
-		int32_t var_csid = CSELF_YOBIDASI + var_stackpos;
+		int32_t yobidasi = CSELF_YOBIDASI + var_stackpos;
+		current_event->cself_names.at(var_stackpos) = name;
+		VarSymbol sym = VarSymbol(name, yobidasi, t_int);
+		if (!st.insert(sym)) error("redeclaration of " + name);
 		var_stackpos++;
-		return var_csid;
+		highest_var_stackpos = std::max(var_stackpos, highest_var_stackpos);
+		return sym;
 	}
 
+	/**
+	* Get new temporary.
+	* @return	Yobidasi value of the temporary.
+	*/
 	int32_t new_temp() {
-		if (temp_stackpos <= var_stackpos) {
+		if (highest_var_stackpos >= lowest_temp_stackpos) {
 			error("no more space for temp variables");
 		}
-		int32_t temp_csid = CSELF_YOBIDASI + temp_stackpos;
+		int32_t yobidasi = CSELF_YOBIDASI + temp_stackpos;
 		current_event->cself_names.at(temp_stackpos) = "__t" + std::to_string(temp_stackpos);
 		temp_stackpos--;
-		lowest_temp_stackpos--;
-		return temp_csid;
+		lowest_temp_stackpos = std::min(temp_stackpos, lowest_temp_stackpos);
+		return yobidasi;
 	}
+
+	/**
+	* Wrapper for an int32_t to distinguish between normal integers and yobidasi hensuu.
+	*/
+	struct WodNumber {
+		WodNumber(int32_t val) : val(val) {}
+		WodNumber(int32_t val, bool is_ref) : val(val), is_ref(is_ref) {}
+		bool has_unintentional_yob() const { return !is_ref && val >= YOBIDASI_THRESHOLD; }
+		bool is_malformed() const { return is_ref && val <= YOBIDASI_THRESHOLD; }
+		int32_t val;
+		bool is_ref = false;
+	};
 
 public:
 	CommonFile cf;
@@ -82,36 +113,61 @@ public:
 		int saved_temp_pos = temp_stackpos;
 		
 		std::string varname = ctx->lhs()->ID()->getText();
+		VarSymbol* dest_symbol = st.lookup(varname);
 
-		int32_t rhs = std::any_cast<int32_t>(ctx->expr()->accept(this));
+		// get assignment type
+		ArithLine::assign_type assign = ArithLine::assign_eq;
+		if (ctx->AS_PEQ()) assign = ArithLine::assign_plus_eq;
+		else if (ctx->AS_MEQ()) assign = ArithLine::assign_minus_eq;
+		else if (ctx->AS_TEQ()) assign = ArithLine::assign_times_eq;
+		else if (ctx->AS_DEQ()) assign = ArithLine::assign_div_eq;
 
-		// replace the temp destination of the most recent arith operation to point to varname's cself
-        if (current_event->lines.size() <= 0) error(ctx, "assign: linecount assertion failed");
+		WodNumber rhs = std::any_cast<WodNumber>(ctx->expr()->accept(this));
 
-		ArithLine* prev_line = dynamic_cast<ArithLine*>(current_event->lines.back());
-		if (prev_line) {
-			prev_line->dest = st.lookup(varname)->yobidasi;
+		// if rhs is just a number, then just assign it to the variable
+		if (!rhs.is_ref) {
+			current_event->append(
+				new ArithLine(
+					dest_symbol->yobidasi, 
+					rhs.val, 0, 
+					ArithLine::assign_eq, ArithLine::op_plus
+				)
+			);
+		}
+		// if it was a temp variable, then we have a longer expr
+		// replace the temp destination of the most recent arith operation to point to varname
+		else {
 
-			// update assignment operator
-			if (ctx->AS_PEQ()) prev_line->assign = ArithLine::assign_plus_eq;
-			else if (ctx->AS_MEQ()) prev_line->assign = ArithLine::assign_minus_eq;
-			else if (ctx->AS_TEQ()) prev_line->assign = ArithLine::assign_times_eq;
-			else if (ctx->AS_DEQ()) prev_line->assign = ArithLine::assign_div_eq;
-		} else { error(ctx, "assign: arith assertion failed"); }
+			if (current_event->lines.size() <= 0) error(ctx, "assign: linecount assertion failed");
 
-        // restore temp stack
+			ArithLine* prev_line = dynamic_cast<ArithLine*>(current_event->lines.back());
+			if (prev_line) {
+				prev_line->dest = dest_symbol->yobidasi;
+				prev_line->assign = assign;
+			}
+			else { error(ctx, "assign: arith assertion failed"); }
+
+		}
+
+		// restore temp stack
 		temp_stackpos = saved_temp_pos;
 		return std::any();
 	}
 
 	std::any visitNumExpr(woditextParser::NumExprContext* ctx) override {
-		return static_cast<int32_t>(stoi(ctx->NUM()->getText()));
+		std::string text = ctx->NUM()->getText();
+		try {
+			return WodNumber(static_cast<int32_t>(stoi(text, 0)));
+		}
+		catch (const std::out_of_range&) {
+			error(ctx, "integer literal " + text + " is too large to fit in a signed 32-bit integer");
+		}
 	}
 
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
-		int32_t cself = st.lookup(ctx->ID()->getText())->yobidasi;
-		if (cself < 0) exit(1);
-		return cself;
+		VarSymbol* symbol = st.lookup(ctx->ID()->getText());
+		if (symbol) return WodNumber(symbol->yobidasi, true);
+		else error(ctx, "id: lookup failed");
 	}
 	
 	std::any visitParenExpr(woditextParser::ParenExprContext* ctx) override {
@@ -123,22 +179,28 @@ public:
 	* @return	yobidasi of the cself in which the negated result is stored
 	*/
 	std::any visitUnopExpr(woditextParser::UnopExprContext* ctx) override {
-		int32_t arg = std::any_cast<int32_t>(ctx->expr()->accept(this));
-		
-		int32_t temp_var = new_temp();
-        current_event->append(new ArithLine(temp_var, 0, arg, ArithLine::assign_eq, ArithLine::op_minus));
+		WodNumber arg = std::any_cast<WodNumber>(ctx->expr()->accept(this));
+		int32_t temp_yob = new_temp();
+		current_event->append(
+			new ArithLine(
+				temp_yob,
+				0, arg.val,
+				ArithLine::assign_eq, ArithLine::op_minus,
+				arg.has_unintentional_yob() ? ArithLine::af_yobanai2 : 0
+			)
+		);
 
-		return temp_var;
+		return WodNumber(temp_yob, true);
 	}
 	
 	/**
 	* @return	yobidasi of the cself in which the result is stored
 	*/
 	std::any visitBinopExpr(woditextParser::BinopExprContext* ctx) override {
-		int32_t arg0 = std::any_cast<int32_t>(ctx->expr(0)->accept(this));
-		int32_t arg1 = std::any_cast<int32_t>(ctx->expr(1)->accept(this));
+		WodNumber left = std::any_cast<WodNumber>(ctx->expr(0)->accept(this));
+		WodNumber right = std::any_cast<WodNumber>(ctx->expr(1)->accept(this));
 
-		int32_t temp_var = new_temp();
+		int32_t temp_yob = new_temp();
 		ArithLine::arith_op op = ArithLine::op_plus;
 		if		(ctx->OP_PLUS())	op = ArithLine::op_plus;
 		else if (ctx->OP_MINUS())	op = ArithLine::op_minus;
@@ -147,25 +209,21 @@ public:
 		else if (ctx->OP_MOD())		op = ArithLine::op_mod;
 		else error(ctx, "no matching op");
 
-		current_event->append(new ArithLine(temp_var, arg0, arg1, ArithLine::assign_eq, op));
+		current_event->append(
+			new ArithLine(
+				temp_yob, left.val, right.val, ArithLine::assign_eq, op,
+				(left.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0)
+				| (right.has_unintentional_yob() ? ArithLine::af_yobanai2 : 0)
+			)
+		);
 		
-		return temp_var;
+		return WodNumber(temp_yob, true);
 	}
 
 	std::any visitDecl(woditextParser::DeclContext* ctx) override {
-		// create variable
-		if (var_stackpos >= lowest_temp_stackpos || var_stackpos >= current_event->MAX_NUM_CSELF_NAMES) {
-			error(ctx, "no more cself space for variables");
-		}
-		
 		std::string varname = ctx->ID()->getText();
+		new_var(varname);
 
-		VarSymbol new_symbol = VarSymbol(varname, var_stackpos + CSELF_YOBIDASI, t_int);
-		if (!st.insert(new_symbol)) {
-			error(ctx, "redeclaration of variable " + varname);
-		}
-
-		current_event->cself_names.at(var_stackpos) = ctx->ID()->getText();
-		return var_stackpos++;
+		return std::any();
 	}
 };
