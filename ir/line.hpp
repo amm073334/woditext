@@ -64,16 +64,18 @@ struct ArithLine : public Line {
     int32_t arg1 = 0;
     assign_type assign = assign_eq;
     arith_op op = op_plus;
-    int32_t misc_flags = 0;
+    int32_t flags = 0;
 
     ArithLine() {}
     ArithLine(int32_t dest, int32_t arg0, int32_t arg1, assign_type assign, arith_op op) 
-        : dest(dest), arg0(arg0), arg1(arg1), assign(assign), op(op) {}
+        : dest(dest), arg0(arg0), arg1(arg1), flags(assign | op) {}
     ArithLine(int32_t dest, int32_t arg0, int32_t arg1, assign_type assign, arith_op op, int32_t flags)
-        : dest(dest), arg0(arg0), arg1(arg1), assign(assign), op(op), misc_flags(flags) {}
+        : dest(dest), arg0(arg0), arg1(arg1), flags(assign | op | flags) {}
+    ArithLine(int32_t dest, int32_t arg0, int32_t arg1, int32_t flags)
+        : dest(dest), arg0(arg0), arg1(arg1), flags(flags) {}
 
     void update_base_data() override {
-        int_fields = {dest, arg0, arg1, assign | op | misc_flags};
+        int_fields = {dest, arg0, arg1, flags};
     }
     
 };

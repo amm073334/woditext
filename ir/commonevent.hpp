@@ -12,7 +12,6 @@ typedef std::vector<std::pair<std::string, int32_t>> EnumList;
 class CommonEvent {    
 public:
     CommonEvent();
-    ~CommonEvent();
 
     /**
      * Append an arbitrary line of code to the end of the common. 
@@ -28,7 +27,7 @@ public:
      * Automatically handles indent level, based on the entered command.
      * @param l             Pointer to the line to append.
     */
-    void append(Line* l);
+    void append(std::unique_ptr<Line> l);
 
     /**
      * Add new parameter of the specified type.
@@ -118,7 +117,7 @@ public:
     /**
      * List of code lines.
     */
-    std::vector<Line*> lines;
+    std::vector<std::unique_ptr<Line>> lines;
 
     /**
      * Name of the return value, and which CSelf to return, from 0-99.

@@ -8,13 +8,6 @@ CommonEvent::CommonEvent() {
     default_args.fill(0);
 }
 
-CommonEvent::~CommonEvent() {
-    // free code lines
-    for (auto iter = lines.begin(); iter != lines.end(); iter++) {
-        delete *iter;
-    }
-}
-
 /**
  * IR modification
 */
@@ -86,7 +79,7 @@ void CommonEvent::update_indent(Line* l) {
 
 void CommonEvent::append(int32_t command_id, std::vector<int32_t> ifields, std::vector<std::string> sfields) {
     // handle fields
-    Line* l = new Line;
+    std::unique_ptr<Line> l = std::make_unique<Line>();
     l->int_fields.push_back(command_id);
     for (size_t i = 0; i < ifields.size(); i++) {
         l->int_fields.push_back(ifields.at(i));
@@ -94,14 +87,14 @@ void CommonEvent::append(int32_t command_id, std::vector<int32_t> ifields, std::
     l->str_fields = sfields;
     
     // handle indent
-    update_indent(l);
+    update_indent(l.get());
     
-    lines.push_back(l);
+    lines.push_back(std::move(l));
 }
 
-void CommonEvent::append(Line* l) {
-    update_indent(l);
-    lines.push_back(l);
+void CommonEvent::append(std::unique_ptr<Line> l) {
+    update_indent(l.get());
+    lines.push_back(std::move(l));
 }
 
 int CommonEvent::new_int_param(std::string name) {
@@ -268,7 +261,7 @@ void CommonEvent::emit_common(std::ofstream *fs) {
     // code body
     int32_t linecount = lines.size();
     for (size_t i = 0; i < linecount; i++) {
-        emit_line(lines.at(i));
+        emit_line(lines.at(i).get());
     }
 
     // footer

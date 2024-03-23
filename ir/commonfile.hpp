@@ -8,9 +8,10 @@ class CommonFile {
 public:
     /**
      * Adds a common event to file.
-     * @param cev A pointer to the common event.
+     * @param cev   Unique pointer to the common event.
+     * @return      Non-owning pointer to the event.
     */
-    void add_common(CommonEvent* cev);
+    CommonEvent* add_common(std::unique_ptr<CommonEvent> cev);
 
     /**
      * Writes common event out to file.
@@ -26,6 +27,6 @@ private:
     /**
      * List of common events in file.
     */
-    std::vector<CommonEvent*> clist;
+    std::vector<std::unique_ptr<CommonEvent>> clist;
 
 };

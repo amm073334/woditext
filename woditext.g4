@@ -9,16 +9,6 @@ common
     : returntype ID '(' (param (',' param)*)? ')' codeblock 
     ;
 
-// params
-//     : paramlist
-//     |
-    // ;
-
-// paramlist
-//     : param ',' paramlist
-//     | param
-//     ;
-
 param
     : vartype ID
     ;

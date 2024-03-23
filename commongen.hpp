@@ -102,8 +102,7 @@ public:
 		st = SymbolTable();
 
 		// make new commonevent
-		current_event = new CommonEvent;
-		cf.add_common(current_event);
+		current_event = cf.add_common(std::make_unique<CommonEvent>());
 
 		current_event->name = ctx->ID()->getText();
 		
@@ -151,13 +150,15 @@ public:
 
 		WodNumber rhs = std::any_cast<WodNumber>(ctx->expr()->accept(this));
 
+		// TODO: BUG: if rhs is a reference, then there will be no previous arith line
 		// if rhs is just a number, then just assign it to the variable
 		if (!rhs.is_ref) {
 			current_event->append(
-				new ArithLine(
-					dest_symbol->yobidasi, 
-					rhs.val, 0, 
-					ArithLine::assign_eq, ArithLine::op_plus
+				std::make_unique<ArithLine>(
+					dest_symbol->yobidasi,
+					rhs.val, 0,
+					ArithLine::assign_eq, ArithLine::op_plus,
+					rhs.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0
 				)
 			);
 		}
@@ -167,7 +168,7 @@ public:
 
 			if (current_event->lines.size() <= 0) error(ctx, "assign: linecount assertion failed");
 
-			ArithLine* prev_line = dynamic_cast<ArithLine*>(current_event->lines.back());
+			ArithLine* prev_line = dynamic_cast<ArithLine*>(current_event->lines.back().get());
 			if (prev_line) {
 				prev_line->dest = dest_symbol->yobidasi;
 				prev_line->assign = assign;
@@ -211,7 +212,7 @@ public:
 		WodNumber arg = std::any_cast<WodNumber>(ctx->expr()->accept(this));
 		int32_t temp_yob = new_temp();
 		current_event->append(
-			new ArithLine(
+			std::make_unique<ArithLine>(
 				temp_yob,
 				0, arg.val,
 				ArithLine::assign_eq, ArithLine::op_minus,
@@ -239,7 +240,7 @@ public:
 		else error(ctx, "no matching op");
 
 		current_event->append(
-			new ArithLine(
+			std::make_unique<ArithLine>(
 				temp_yob, left.val, right.val, ArithLine::assign_eq, op,
 				(left.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0)
 				| (right.has_unintentional_yob() ? ArithLine::af_yobanai2 : 0)

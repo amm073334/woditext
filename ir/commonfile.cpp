@@ -3,8 +3,9 @@
 #include <fstream>
 #include "commonfile.hpp"
 
-void CommonFile::add_common(CommonEvent* cev) {
-    clist.push_back(cev);
+CommonEvent* CommonFile::add_common(std::unique_ptr<CommonEvent> cev) {
+    clist.push_back(std::move(cev));
+    return clist.back().get();
 }
 
 void CommonFile::generate(const char *outfile) {
