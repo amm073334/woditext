@@ -150,32 +150,15 @@ public:
 
 		WodNumber rhs = std::any_cast<WodNumber>(ctx->expr()->accept(this));
 
-		// TODO: BUG: if rhs is a reference, then there will be no previous arith line
-		// if rhs is just a number, then just assign it to the variable
-		if (!rhs.is_ref) {
-			current_event->append(
-				std::make_unique<ArithLine>(
-					dest_symbol->yobidasi,
-					rhs.val, 0,
-					ArithLine::assign_eq, ArithLine::op_plus,
-					rhs.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0
-				)
-			);
-		}
-		// if it was a temp variable, then we have a longer expr
-		// replace the temp destination of the most recent arith operation to point to varname
-		else {
-
-			if (current_event->lines.size() <= 0) error(ctx, "assign: linecount assertion failed");
-
-			ArithLine* prev_line = dynamic_cast<ArithLine*>(current_event->lines.back().get());
-			if (prev_line) {
-				prev_line->dest = dest_symbol->yobidasi;
-				prev_line->assign = assign;
-			}
-			else { error(ctx, "assign: arith assertion failed"); }
-
-		}
+		// assign to var
+		current_event->append(
+			std::make_unique<ArithLine>(
+				dest_symbol->yobidasi,
+				rhs.val, 0,
+				ArithLine::assign_eq, ArithLine::op_plus,
+				rhs.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0
+			)
+		);
 
 		// restore temp stack
 		temp_stackpos = saved_temp_pos;
