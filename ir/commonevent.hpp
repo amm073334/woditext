@@ -146,7 +146,7 @@ private:
      * Code generation
     */
 
-    std::ofstream* fs;
+    std::ofstream* fs = NULL;
 
     /**
      * Writes to output, interpreting the input

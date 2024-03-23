@@ -46,9 +46,9 @@ include_directories(${PROJECT_SOURCE_DIR}
                     ${PROJECT_SOURCE_DIR}/ir/
 )
 
-add_executable(wtc main.cpp
+add_executable(wc main.cpp
                ir/commonevent.cpp ir/commonfile.cpp
                ${ANTLR_woditextGrammarParser_CXX_OUTPUTS})
 
 # link required libraries
-target_link_libraries(wtc antlr4_static ${SYSTEM_LIBS})
+target_link_libraries(wc antlr4_static ${SYSTEM_LIBS})
