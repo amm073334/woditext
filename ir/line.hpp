@@ -76,6 +76,15 @@ struct ArithLine : public Line {
 
     void update_base_data() override {
         int_fields = {dest, arg0, arg1, flags};
+        str_fields = {};
     }
     
+};
+
+struct ReturnLine : Line {
+    int32_t get_command_id() override { return 172; }
+    void update_base_data() override {
+        int_fields = {};
+        str_fields = {};
+    }
 };

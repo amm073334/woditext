@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 enum var_type {
+	t_void,
 	t_int,
 	t_str
 };

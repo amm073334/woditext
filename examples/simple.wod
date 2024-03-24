@@ -1,5 +1,5 @@
 // comment
-void test_func(int param, str string, int another) {
+int test_func(int param, str string, int another) {
     int test;
     int test2 = 5;
     test = param;
@@ -11,6 +11,7 @@ void test_func(int param, str string, int another) {
     test = 1 + 2 + 3 + 4;
     test = -(4 + 1) + (2 * 3) % 5;
     test2 = 3 / 2 - -2;
+    return test2;
     test = test + test2;
 }
 

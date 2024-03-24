@@ -15,6 +15,8 @@ class CommonGen : public woditextBaseVisitor {
 private:
 	static const int VAR_STACK_START = 10;
 	static const int TEMP_STACK_START = 98;
+	static const int INT_RETURN_INDEX = 99;
+	static const int STR_RETURN_INDEX = 9;
 
 	// Where the engine begins to interpret integers as references.
 	static const int32_t YOBIDASI_THRESHOLD = 1000000;
@@ -27,6 +29,7 @@ private:
 	int highest_var_stackpos = VAR_STACK_START;
 	int temp_stackpos = TEMP_STACK_START;
 	int lowest_temp_stackpos = TEMP_STACK_START;
+	var_type return_type = t_void;
 	SymbolTable st;
 
 	void error(antlr4::ParserRuleContext *ctx, std::string message) const {
@@ -104,7 +107,20 @@ public:
 		// make new commonevent
 		current_event = cf.add_common(std::make_unique<CommonEvent>());
 
+		// handle return type
 		current_event->name = ctx->ID()->getText();
+		if (ctx->returntype()->T_VOID()) {
+			return_type = t_void;
+		}
+		else if (ctx->returntype()->T_INT()) {
+			return_type = t_int;
+			current_event->return_cself_id = INT_RETURN_INDEX;
+		}
+		else if (ctx->returntype()->T_STR()) {
+			return_type = t_str;
+			current_event->return_cself_id = STR_RETURN_INDEX;
+		}
+		else error(ctx, "unknown return type");
 		
 		// handle params
 		std::vector<woditextParser::ParamContext*> params = ctx->param();
@@ -128,6 +144,25 @@ public:
 		// visit code
 		ctx->codeblock()->accept(this);
 
+		return std::any();
+	}
+
+	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
+		int saved_temp_pos = temp_stackpos;
+		
+		WodNumber rhs = std::any_cast<WodNumber>(ctx->expr()->accept(this));
+		// assign to var
+		current_event->append(
+			std::make_unique<ArithLine>(
+				CSELF_YOBIDASI + INT_RETURN_INDEX,
+				rhs.val, 0,
+				ArithLine::assign_eq, ArithLine::op_plus,
+				rhs.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0
+			)
+		);
+		current_event->append(std::make_unique<ReturnLine>());
+
+		temp_stackpos = saved_temp_pos;
 		return std::any();
 	}
 
@@ -175,7 +210,7 @@ public:
 		}
 		return std::any();
 	}
-
+	
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
 		VarSymbol* symbol = st.lookup(ctx->ID()->getText());
 		if (symbol) return WodNumber(symbol->yobidasi, true);
