@@ -18,9 +18,6 @@ private:
 	static const int INT_RETURN_INDEX = 99;
 	static const int STR_RETURN_INDEX = 9;
 
-	// Where the engine begins to interpret integers as references.
-	static const int32_t YOBIDASI_THRESHOLD = 1000000;
-
 	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
@@ -69,9 +66,9 @@ private:
 
 	/**
 	* Get new temporary.
-	* @return	Yobidasi value of the temporary.
+	* @return	WodNumber value of the temporary.
 	*/
-	int32_t new_temp() {
+	WodNumber new_temp() {
 		if (highest_var_stackpos >= lowest_temp_stackpos) {
 			error("no more space for temp variables");
 		}
@@ -79,20 +76,10 @@ private:
 		current_event->cself_names.at(temp_stackpos) = "__t" + std::to_string(temp_stackpos);
 		temp_stackpos--;
 		lowest_temp_stackpos = std::min(temp_stackpos, lowest_temp_stackpos);
-		return yobidasi;
+		return WodNumber(yobidasi, true);
 	}
 
-	/**
-	* Wrapper for an int32_t to distinguish between normal integers and yobidasi hensuu.
-	*/
-	struct WodNumber {
-		WodNumber(int32_t val) : val(val) {}
-		WodNumber(int32_t val, bool is_ref) : val(val), is_ref(is_ref) {}
-		bool has_unintentional_yob() const { return !is_ref && val >= YOBIDASI_THRESHOLD; }
-		bool is_malformed() const { return is_ref && val <= YOBIDASI_THRESHOLD; }
-		int32_t val;
-		bool is_ref = false;
-	};
+	
 
 public:
 	CommonFile cf;
@@ -159,9 +146,8 @@ public:
 		current_event->append(
 			std::make_unique<ArithLine>(
 				CSELF_YOBIDASI + INT_RETURN_INDEX,
-				rhs.val, 0,
-				ArithLine::assign_eq, ArithLine::op_plus,
-				rhs.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0
+				rhs, 0,
+				ArithLine::assign_eq | ArithLine::op_plus
 			)
 		);
 		current_event->append(std::make_unique<ReturnLine>());
@@ -172,7 +158,13 @@ public:
 
 	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
+
+		// evaluate expression
 		WodNumber condition = std::any_cast<WodNumber>(ctx->expr()->accept(this));
+
+		//current_event->append(
+		//	std::make_unique<IntIfHeadLine>() // TODO
+		//);
 
 		temp_stackpos = saved_temp_pos;
 		return std::any();
@@ -200,10 +192,9 @@ public:
 		// assign to var
 		current_event->append(
 			std::make_unique<ArithLine>(
-				dest_symbol->yobidasi,
-				rhs.val, 0,
-				ArithLine::assign_eq, ArithLine::op_plus,
-				rhs.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0
+				WodNumber(dest_symbol->yobidasi, true),
+				rhs, 0,
+				ArithLine::assign_eq | ArithLine::op_plus
 			)
 		);
 
@@ -240,17 +231,16 @@ public:
 	*/
 	std::any visitUnopExpr(woditextParser::UnopExprContext* ctx) override {
 		WodNumber arg = std::any_cast<WodNumber>(ctx->expr()->accept(this));
-		int32_t temp_yob = new_temp();
+		WodNumber tempvar = new_temp();
 		current_event->append(
 			std::make_unique<ArithLine>(
-				temp_yob,
-				0, arg.val,
-				ArithLine::assign_eq, ArithLine::op_minus,
-				arg.has_unintentional_yob() ? ArithLine::af_yobanai2 : 0
+				tempvar,
+				0, arg,
+				ArithLine::assign_eq | ArithLine::op_minus
 			)
 		);
 
-		return WodNumber(temp_yob, true);
+		return tempvar;
 	}
 	
 	/**
@@ -260,7 +250,7 @@ public:
 		WodNumber left = std::any_cast<WodNumber>(ctx->expr(0)->accept(this));
 		WodNumber right = std::any_cast<WodNumber>(ctx->expr(1)->accept(this));
 
-		int32_t temp_yob = new_temp();
+		WodNumber tempvar = new_temp();
 		ArithLine::arith_op op = ArithLine::op_plus;
 		if		(ctx->OP_PLUS())	op = ArithLine::op_plus;
 		else if (ctx->OP_MINUS())	op = ArithLine::op_minus;
@@ -271,13 +261,11 @@ public:
 
 		current_event->append(
 			std::make_unique<ArithLine>(
-				temp_yob, left.val, right.val, ArithLine::assign_eq, op,
-				(left.has_unintentional_yob() ? ArithLine::af_yobanai1 : 0)
-				| (right.has_unintentional_yob() ? ArithLine::af_yobanai2 : 0)
+				tempvar, left, right, ArithLine::assign_eq | op
 			)
 		);
 		
-		return WodNumber(temp_yob, true);
+		return tempvar;
 	}
 
 	std::any visitDecl(woditextParser::DeclContext* ctx) override {

@@ -4,6 +4,22 @@
 #include <string>
 
 /**
+* Wrapper for an int32_t to distinguish between normal integers and yobidasi hensuu.
+*/
+class WodNumber {
+public:
+    WodNumber(int32_t value) : value(value), is_ref(false) {}
+    WodNumber(int32_t value, bool is_ref) : value(value), is_ref(is_ref) {}
+    bool should_suppress_yobidasi() const { return !is_ref && value >= YOBIDASI_THRESHOLD; }
+    bool is_malformed() const { return is_ref && value <= YOBIDASI_THRESHOLD; }
+    int32_t value;
+private:
+    // Where the engine begins to interpret integers as references.
+    static const int32_t YOBIDASI_THRESHOLD = 1000000;
+    bool is_ref;
+};
+
+/**
  * A line of code is represented in the binary with
  * a list of integers and a list of strings, along with
  * an indent level. There is always at least one integer,
@@ -77,13 +93,11 @@ public:
         af_yob_arg2    = 0x40
     };
 
-    ArithLine() {}
-    ArithLine(int32_t dest, int32_t arg0, int32_t arg1, assign_type assign, arith_op op)
-        : dest(dest), arg0(arg0), arg1(arg1), flags(assign | op) {}
-    ArithLine(int32_t dest, int32_t arg0, int32_t arg1, assign_type assign, arith_op op, int32_t flags)
-        : dest(dest), arg0(arg0), arg1(arg1), flags(assign | op | flags) {}
-    ArithLine(int32_t dest, int32_t arg0, int32_t arg1, int32_t flags)
-        : dest(dest), arg0(arg0), arg1(arg1), flags(flags) {}
+    ArithLine(WodNumber dest, WodNumber arg0, WodNumber arg1, int32_t flags)
+        : dest(dest.value), arg0(arg0.value), arg1(arg1.value), flags(flags) {
+        if (arg0.should_suppress_yobidasi()) this->flags |= af_yobanai1;
+        if (arg1.should_suppress_yobidasi()) this->flags |= af_yobanai2;
+    }
 
 private:
     int32_t dest = 0;
