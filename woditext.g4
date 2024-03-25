@@ -39,13 +39,13 @@ loopstmt
     ;
 
 stmt
-    : stmtcontent ';'
+    : linestmt ';'
     | loopstmt
     | ifstmt
     | codeblock
     ;
 
-stmtcontent
+linestmt
     : vartype ID        # Decl
     | lhs '=' expr      # Assign
     | lhs '+=' expr     # Assign
@@ -55,14 +55,6 @@ stmtcontent
     | lhs '%=' expr     # Assign
     | BREAK             # Break
     | RETURN expr       # Return
-    ;
-
-comp
-    : '==' | '>' | '>=' | '<' | '<='
-    ;
-
-call
-    : ID '(' args ')'
     ;
 
 args
@@ -89,13 +81,17 @@ dbattr
     ;
 
 expr
-    : '-' expr                          # UnopExpr
-    | expr ('*' | '/' | '%') expr       # BinopExpr
-    | expr ('+' | '-') expr             # BinopExpr
-    | '(' expr ')'                      # ParenExpr
-    | call                              # CallExpr
-    | ID                                # IdExpr
-    | NUM                               # NumExpr
+    : ID '(' args ')'                       # CallExpr
+    | '-' expr                              # UnopExpr
+    | '!' expr                              # LogicalNotExpr
+    | expr ('*' | '/' | '%') expr           # BinopExpr
+    | expr ('+' | '-') expr                 # BinopExpr
+    | expr ('<' | '<=' | '>' | '>=') expr   # BinopRelExpr
+    | expr ('==' | '!=') expr               # BinopRelExpr
+    | expr ('&') expr                       # BinopExpr
+    | '(' expr ')'                          # ParenExpr
+    | ID                                    # IdExpr
+    | NUM                                   # NumExpr
     ;
 
 
@@ -112,8 +108,10 @@ OP_MINUS: '-';
 OP_TIMES: '*';
 OP_DIV: '/';
 OP_MOD: '%';
+OP_AMP: '&';
 
 OP_EQ: '==';
+OP_NEQ: '!=';
 OP_GT: '>';
 OP_GTE: '>=';
 OP_LT: '<';

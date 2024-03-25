@@ -282,21 +282,54 @@ public:
 		WodNumber right = eval_expr(ctx->expr(1));
 		temp_stackpos = saved_temp_pos;
 
-		WodNumber tempvar = new_temp();
 		ArithLine::arith_op op = ArithLine::op_plus;
 		if		(ctx->OP_PLUS())	op = ArithLine::op_plus;
 		else if (ctx->OP_MINUS())	op = ArithLine::op_minus;
 		else if (ctx->OP_TIMES())	op = ArithLine::op_times;
 		else if (ctx->OP_DIV())		op = ArithLine::op_div;
 		else if (ctx->OP_MOD())		op = ArithLine::op_mod;
+		else if (ctx->OP_AMP())		op = ArithLine::op_bitand;
 		else error(ctx, "no matching op");
 
+		WodNumber tempvar = new_temp();
 		current_event->append(
 			std::make_unique<ArithLine>(
 				tempvar, left, right, ArithLine::assign_eq | op
 			)
 		);
 		
+		return tempvar;
+	}
+
+	std::any visitBinopRelExpr(woditextParser::BinopRelExprContext* ctx) override {
+		int saved_temp_pos = temp_stackpos;
+		WodNumber left = eval_expr(ctx->expr(0));
+		WodNumber right = eval_expr(ctx->expr(1));
+		temp_stackpos = saved_temp_pos;
+
+		IntIfHeadLine::comp_op op = IntIfHeadLine::op_gt;
+		if (ctx->OP_LT()) op = IntIfHeadLine::op_lt;
+		else if (ctx->OP_LTE()) op = IntIfHeadLine::op_lte;
+		else if (ctx->OP_GT()) op = IntIfHeadLine::op_gt;
+		else if (ctx->OP_GTE()) op = IntIfHeadLine::op_gte;
+		else if (ctx->OP_EQ()) op = IntIfHeadLine::op_eq;
+		else if (ctx->OP_NEQ()) op = IntIfHeadLine::op_neq;
+		else error(ctx, "no matching relop");
+
+		std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(left, right, op);
+		headline->set_else_branch(true);
+
+		current_event->append(std::move(headline));
+		current_event->append(std::make_unique<BranchLine>(1));
+
+		WodNumber tempvar = new_temp();
+		current_event->append(std::make_unique<ArithLine>(
+				tempvar, 1, 0, ArithLine::assign_eq | ArithLine::op_plus));
+
+		current_event->append(std::make_unique<ElseBranchLine>());
+		current_event->append(std::make_unique<ArithLine>(
+			tempvar, 0, 0, ArithLine::assign_eq | ArithLine::op_plus));
+
 		return tempvar;
 	}
 
