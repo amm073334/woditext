@@ -137,9 +137,9 @@ private:
      * @param command   Command ID.
      * @return          Boolean result.
     */
-    bool modifies_its_indent(int32_t command);
-    bool increases_next_indent(int32_t command);
-    bool is_codeblock_head(int32_t command);
+    bool is_branch_head(int32_t command);
+    bool is_codeblock_footer(int32_t command);
+    bool is_codeblock_header(int32_t command);
 
     /**
      * Calculates the indent of a line if appended to the end of the code.

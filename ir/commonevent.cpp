@@ -12,12 +12,20 @@ CommonEvent::CommonEvent() {
  * IR modification
 */
 
-bool CommonEvent::modifies_its_indent(int32_t command) {
+bool CommonEvent::is_branch_head(int32_t command) {
     switch (command) {
         case 401: // conditional branch start
         case 420: // else branch start
         case 402: // sentakusi keypress branch
         case 421: // sentakusi cancel branch
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool CommonEvent::is_codeblock_footer(int32_t command) {
+    switch (command) {
         case 498: // loop end
         case 499: // conditional end
             return true;
@@ -26,21 +34,7 @@ bool CommonEvent::modifies_its_indent(int32_t command) {
     }
 }
 
-bool CommonEvent::increases_next_indent(int32_t command) {
-    switch (command) {
-        case 401: // conditional branch start
-        case 420: // else branch start
-        case 402: // sentakusi keypress branch
-        case 421: // sentakusi cancel branch
-        case 170: // loop head
-        case 179: // loop x times head
-            return true;
-        default:
-            return false;
-    }
-}
-
-bool CommonEvent::is_codeblock_head(int32_t command) {
+bool CommonEvent::is_codeblock_header(int32_t command) {
     switch (command) {
         case 102: // sentakusi
         case 111: // integer conditional
@@ -57,23 +51,21 @@ void CommonEvent::update_indent(Line* l) {
     if (lines.empty()) {
         l->indent_level = 0;
     } else {
-        int32_t command_id = l->get_command_id();
+        int32_t curr_command = l->get_command_id();
         char prev_indent = lines.back()->indent_level;
         int32_t prev_command = lines.back()->get_command_id();
 
-        if (modifies_its_indent(command_id)) {
-            if (modifies_its_indent(prev_command) || is_codeblock_head(prev_command)) {
-                l->indent_level = prev_indent;
-            } else {
-                l->indent_level = prev_indent - 1;
-            }
-        } else {
-            if (increases_next_indent(prev_command)) {
-                l->indent_level = prev_indent + 1;
-            } else {
-                l->indent_level = prev_indent;
-            }
-        }    
+        if ((is_branch_head(curr_command) || is_codeblock_footer(curr_command))
+            && !is_branch_head(prev_command) && !is_codeblock_header(prev_command)) {
+            l->indent_level = prev_indent - 1;
+        }
+        else if ((is_branch_head(prev_command) || is_codeblock_header(prev_command))
+                && !is_branch_head(curr_command)) {
+            l->indent_level = prev_indent + 1;
+        }
+        else {
+            l->indent_level = prev_indent;
+        }
     }
 }
 
