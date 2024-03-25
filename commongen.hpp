@@ -256,19 +256,13 @@ public:
 	* @return	yobidasi of the cself in which the negated result is stored
 	*/
 	std::any visitUnopExpr(woditextParser::UnopExprContext* ctx) override {
-		// eval
 		int saved_temp_pos = temp_stackpos;
 		WodNumber arg = eval_expr(ctx->expr());
 		temp_stackpos = saved_temp_pos;
 
 		WodNumber tempvar = new_temp();
-		current_event->append(
-			std::make_unique<ArithLine>(
-				tempvar,
-				0, arg,
-				ArithLine::assign_eq | ArithLine::op_minus
-			)
-		);
+		current_event->append(std::make_unique<ArithLine>(
+				tempvar, 0, arg, ArithLine::assign_eq | ArithLine::op_minus));
 
 		return tempvar;
 	}
@@ -300,6 +294,30 @@ public:
 		
 		return tempvar;
 	}
+	
+	std::any visitLogicalNotExpr(woditextParser::LogicalNotExprContext* ctx) override {
+		int saved_temp_pos = temp_stackpos;
+		WodNumber arg = eval_expr(ctx->expr());
+		temp_stackpos = saved_temp_pos;
+
+
+		std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(arg, 0, IntIfHeadLine::op_neq);
+		headline->set_else_branch(true);
+
+		current_event->append(std::move(headline));
+		WodNumber tempvar = new_temp();
+
+		current_event->append(std::make_unique<BranchLine>(1));
+		current_event->append(std::make_unique<ArithLine>(
+			tempvar, 0, 0, ArithLine::assign_eq | ArithLine::op_plus));
+
+		current_event->append(std::make_unique<ElseBranchLine>());
+		current_event->append(std::make_unique<ArithLine>(
+			tempvar, 1, 0, ArithLine::assign_eq | ArithLine::op_plus));
+
+		current_event->append(std::make_unique<EndBranchLine>());
+		return tempvar;
+	}
 
 	std::any visitBinopRelExpr(woditextParser::BinopRelExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
@@ -320,9 +338,9 @@ public:
 		headline->set_else_branch(true);
 
 		current_event->append(std::move(headline));
-		current_event->append(std::make_unique<BranchLine>(1));
-
 		WodNumber tempvar = new_temp();
+		
+		current_event->append(std::make_unique<BranchLine>(1));
 		current_event->append(std::make_unique<ArithLine>(
 				tempvar, 1, 0, ArithLine::assign_eq | ArithLine::op_plus));
 
@@ -330,6 +348,7 @@ public:
 		current_event->append(std::make_unique<ArithLine>(
 			tempvar, 0, 0, ArithLine::assign_eq | ArithLine::op_plus));
 
+		current_event->append(std::make_unique<EndBranchLine>());
 		return tempvar;
 	}
 
