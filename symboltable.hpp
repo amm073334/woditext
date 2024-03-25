@@ -22,8 +22,8 @@ private:
 
 	ScopeTable table;
 	std::list<std::unique_ptr<Scope>> children;
-	Scope* parent = NULL;
-public:
+	Scope* parent = nullptr;
+	
 	/**
 	* Create a new scope from within this scope.
 	* @return	Reference to the new scope.
@@ -58,6 +58,7 @@ public:
 		else return parent->lookup(name);					// not found; search in parent scope
 	}
 
+	friend class SymbolTable;
 };
 
 /**

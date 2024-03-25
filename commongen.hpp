@@ -24,7 +24,7 @@ private:
 	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
-	CommonEvent* current_event;
+	CommonEvent* current_event = nullptr;
 	int var_stackpos = VAR_STACK_START;
 	int highest_var_stackpos = VAR_STACK_START;
 	int temp_stackpos = TEMP_STACK_START;
@@ -144,6 +144,10 @@ public:
 		// visit code
 		ctx->codeblock()->accept(this);
 
+		// if a common is completely blank, the engine will determine commonevent.dat as corrupted
+		// append an empty line at the end of the common to alleviate this
+		current_event->append(std::make_unique<EmptyLine>());
+
 		return std::any();
 	}
 
@@ -161,6 +165,14 @@ public:
 			)
 		);
 		current_event->append(std::make_unique<ReturnLine>());
+
+		temp_stackpos = saved_temp_pos;
+		return std::any();
+	}
+
+	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
+		int saved_temp_pos = temp_stackpos;
+		WodNumber condition = std::any_cast<WodNumber>(ctx->expr()->accept(this));
 
 		temp_stackpos = saved_temp_pos;
 		return std::any();

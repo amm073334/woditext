@@ -18,7 +18,7 @@ codeblock
     ;
 
 ifstmt
-    : 'if' '(' expr comp expr ')' codeblock
+    : 'if' '(' expr ')' stmt ('else' stmt)?
     ;
 
 returntype

@@ -154,7 +154,7 @@ private:
      * Code generation
     */
 
-    std::ofstream* fs = NULL;
+    std::ofstream* fs = nullptr;
 
     /**
      * Writes to output, interpreting the input
