@@ -179,12 +179,14 @@ public:
 		
 		st.open_scope();
 		ctx->stmt(0)->accept(this);
+		current_event->append(std::make_unique<EmptyLine>());
 		st.close_scope();
 
 		if (ctx->stmt(1)) {
 			current_event->append(std::make_unique<ElseBranchLine>());
 			st.open_scope();
 			ctx->stmt(1)->accept(this);
+			current_event->append(std::make_unique<EmptyLine>());
 			st.close_scope();
 		}
 
