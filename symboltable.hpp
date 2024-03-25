@@ -75,6 +75,15 @@ public:
 		curr_scope = head.get();
 	}
 
+	void open_scope() {
+		curr_scope = curr_scope->create_child_scope();
+	}
+
+	void close_scope() {
+		if (curr_scope->parent) curr_scope = curr_scope->parent;
+		else std::cout << "tried to close scope with no parent" << std::endl;
+	}
+
 	/**
 	* Insert a variable into the symbol table.
 	* @param symbol		Symbol.

@@ -100,10 +100,10 @@ public:
     }
 
 private:
-    int32_t dest = 0;
-    int32_t arg0 = 0;
-    int32_t arg1 = 0;
-    int32_t flags = 0;
+    int32_t dest;
+    int32_t arg0;
+    int32_t arg1;
+    int32_t flags;
 
     void update_base_data() override {
         int_fields = { dest, arg0, arg1, flags };
@@ -137,7 +137,8 @@ public:
         op_mitasu
     };
 
-    IntIfHeadLine(int32_t arg0, int32_t arg1, comp_op op) {
+    IntIfHeadLine() {}
+    IntIfHeadLine(WodNumber arg0, WodNumber arg1, comp_op op) {
         branches.push_back(Branch(arg0, arg1, op));
     }
     
@@ -146,7 +147,7 @@ public:
     * @param arg0, arg1, op     Values to compare and operation to compare with.
     * @return                   How many branches the if statement now has. -1 if failed to insert.
     */
-    int add_branch(int32_t arg0, int32_t arg1, comp_op op) {
+    int add_branch(WodNumber arg0, WodNumber arg1, comp_op op) {
         if (branches.size() >= MAX_BRANCH_COUNT) return -1;
         branches.push_back(Branch(arg0, arg1, op));
         return branches.size();
@@ -164,25 +165,30 @@ private:
     static const int MAX_BRANCH_COUNT = 4;
 
     struct Branch {
-        Branch(int32_t arg0, int32_t arg1, comp_op op) : arg0(arg0), arg1(arg1), op(op) {}
-        int32_t arg0 = 1600000;
-        int32_t arg1 = 0;
-        comp_op op = op_gt;
+        Branch(WodNumber arg0, WodNumber arg1, comp_op op) 
+            : arg0(arg0.value), arg1(arg1.value), flags(op) {
+            if (arg1.should_suppress_yobidasi()) this->flags |= FLAG_YOBANAI;
+        }
+        static const int32_t FLAG_YOBANAI = 0x10;
+        int32_t arg0;
+        int32_t arg1;
+        int32_t flags;
     };
     
     std::vector<Branch> branches;
     bool has_else_branch = false;
+    static const int32_t FLAG_HASELSE = 0x10;
 
     void update_base_data() override {
         int_fields = { 
             static_cast<int32_t>(branches.size())
-            | (has_else_branch ? 0x10 : 0x00)
+            | (has_else_branch ? FLAG_HASELSE : 0x00)
         };
         for (int i = 0; i < branches.size(); i++) {
             Branch b = branches.at(i);
             int_fields.push_back(b.arg0);
             int_fields.push_back(b.arg1);
-            int_fields.push_back(b.op);
+            int_fields.push_back(b.flags);
         }
 
         str_fields = {};
@@ -197,6 +203,18 @@ private:
     int32_t branch_number = 1;
     void update_base_data() override {
         int_fields = { branch_number };
+        str_fields = {};
+    }
+};
+
+class ElseBranchLine : public Line {
+public:
+    int32_t get_command_id() override { return 420; }
+    ElseBranchLine() {}
+private:
+    int32_t mysterious_arg = 0;
+    void update_base_data() override {
+        int_fields = { mysterious_arg };
         str_fields = {};
     }
 };

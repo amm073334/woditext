@@ -79,7 +79,17 @@ private:
 		return WodNumber(yobidasi, true);
 	}
 
-	
+	// TODO: broken
+	WodNumber eval_expr(woditextParser::ExprContext* ctx) {
+		try {
+			WodNumber result = std::any_cast<WodNumber>(ctx->accept(this));
+			return result;
+		}
+		catch (const std::bad_any_cast&) {
+			error(ctx, "expr did not return a WodNumber");
+		}
+		return WodNumber(0);
+	}
 
 public:
 	CommonFile cf;
@@ -140,8 +150,9 @@ public:
 
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		
-		WodNumber rhs = std::any_cast<WodNumber>(ctx->expr()->accept(this));
+		WodNumber rhs = eval_expr(ctx->expr());
+		temp_stackpos = saved_temp_pos;
+
 		// assign to var
 		current_event->append(
 			std::make_unique<ArithLine>(
@@ -152,26 +163,37 @@ public:
 		);
 		current_event->append(std::make_unique<ReturnLine>());
 
-		temp_stackpos = saved_temp_pos;
 		return std::any();
 	}
 
 	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-
-		// evaluate expression
-		WodNumber condition = std::any_cast<WodNumber>(ctx->expr()->accept(this));
-
-		//current_event->append(
-		//	std::make_unique<IntIfHeadLine>() // TODO
-		//);
-
+		WodNumber condition = eval_expr(ctx->expr());
 		temp_stackpos = saved_temp_pos;
+
+		std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(condition, 0, IntIfHeadLine::op_neq);
+		if (ctx->stmt(1)) headline->set_else_branch(true);
+		
+		current_event->append(std::move(headline));
+		current_event->append(std::make_unique<BranchLine>(1));
+		
+		st.open_scope();
+		ctx->stmt(0)->accept(this);
+		st.close_scope();
+
+		if (ctx->stmt(1)) {
+			current_event->append(std::make_unique<ElseBranchLine>());
+			st.open_scope();
+			ctx->stmt(1)->accept(this);
+			st.close_scope();
+		}
+
+		current_event->append(std::make_unique<EndBranchLine>());
+
 		return std::any();
 	}
 
 	std::any visitAssign(woditextParser::AssignContext* ctx) override {
-		int saved_temp_pos = temp_stackpos;
 		
 		std::string varname = ctx->lhs()->ID()->getText();
 		if (ctx->lhs()->vartype()) {
@@ -187,19 +209,21 @@ public:
 		else if (ctx->AS_TEQ()) assign = ArithLine::assign_times_eq;
 		else if (ctx->AS_DEQ()) assign = ArithLine::assign_div_eq;
 
-		WodNumber rhs = std::any_cast<WodNumber>(ctx->expr()->accept(this));
+		// eval
+		int saved_temp_pos = temp_stackpos;
+		WodNumber rhs = eval_expr(ctx->expr());
+		temp_stackpos = saved_temp_pos;
 
 		// assign to var
 		current_event->append(
 			std::make_unique<ArithLine>(
 				WodNumber(dest_symbol->yobidasi, true),
 				rhs, 0,
-				ArithLine::assign_eq | ArithLine::op_plus
+				assign | ArithLine::op_plus
 			)
 		);
 
 		// restore temp stack
-		temp_stackpos = saved_temp_pos;
 		return std::any();
 	}
 
@@ -230,7 +254,11 @@ public:
 	* @return	yobidasi of the cself in which the negated result is stored
 	*/
 	std::any visitUnopExpr(woditextParser::UnopExprContext* ctx) override {
-		WodNumber arg = std::any_cast<WodNumber>(ctx->expr()->accept(this));
+		// eval
+		int saved_temp_pos = temp_stackpos;
+		WodNumber arg = eval_expr(ctx->expr());
+		temp_stackpos = saved_temp_pos;
+
 		WodNumber tempvar = new_temp();
 		current_event->append(
 			std::make_unique<ArithLine>(
@@ -247,8 +275,10 @@ public:
 	* @return	yobidasi of the cself in which the result is stored
 	*/
 	std::any visitBinopExpr(woditextParser::BinopExprContext* ctx) override {
-		WodNumber left = std::any_cast<WodNumber>(ctx->expr(0)->accept(this));
-		WodNumber right = std::any_cast<WodNumber>(ctx->expr(1)->accept(this));
+		int saved_temp_pos = temp_stackpos;
+		WodNumber left = eval_expr(ctx->expr(0));
+		WodNumber right = eval_expr(ctx->expr(1));
+		temp_stackpos = saved_temp_pos;
 
 		WodNumber tempvar = new_temp();
 		ArithLine::arith_op op = ArithLine::op_plus;
