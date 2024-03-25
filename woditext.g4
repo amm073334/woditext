@@ -57,16 +57,6 @@ linestmt
     | RETURN expr       # Return
     ;
 
-args
-    : arglist
-    |
-    ;
-
-arglist
-    : expr ',' arglist
-    | expr
-    ;
-
 lhs
     : vartype ID
     | ID
@@ -81,8 +71,8 @@ dbattr
     ;
 
 expr
-    : ID '(' args ')'                       # CallExpr
-    | '-' expr                              # UnopExpr
+    : ID '(' (expr (',' expr)*)? ')'        # CallExpr
+    | '-' expr                              # UnaryMinusExpr
     | '!' expr                              # LogicalNotExpr
     | expr ('*' | '/' | '%') expr           # BinopExpr
     | expr ('+' | '-') expr                 # BinopExpr
@@ -96,12 +86,6 @@ expr
 
 
 // lexer
-LPAREN: '(';
-RPAREN: ')';
-LBRACE: '{';
-RBRACE: '}';
-LBRACK: '[';
-RBRACK: ']';
 
 OP_PLUS: '+';
 OP_MINUS: '-';

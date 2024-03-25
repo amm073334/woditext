@@ -19,6 +19,8 @@ int test_func(int param, str string, int another) {
         test += 2;
     } 
     else test += 3;
+
+    if (test > test2) return 1;
 }
 
 void test2() {

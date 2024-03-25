@@ -251,11 +251,7 @@ public:
 		return ctx->expr()->accept(this);
 	}
 	
-	/**
-	* Negates expr (since that is the only unop)
-	* @return	yobidasi of the cself in which the negated result is stored
-	*/
-	std::any visitUnopExpr(woditextParser::UnopExprContext* ctx) override {
+	std::any visitUnaryMinusExpr(woditextParser::UnaryMinusExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
 		WodNumber arg = eval_expr(ctx->expr());
 		temp_stackpos = saved_temp_pos;
@@ -267,9 +263,6 @@ public:
 		return tempvar;
 	}
 	
-	/**
-	* @return	yobidasi of the cself in which the result is stored
-	*/
 	std::any visitBinopExpr(woditextParser::BinopExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
 		WodNumber left = eval_expr(ctx->expr(0));
