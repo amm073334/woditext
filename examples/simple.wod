@@ -10,7 +10,7 @@ int test_func(int param, str string, int another) {
         return;
     }
 
-    loop (12378132) {
+    loop (1781323 + 2) {
         int test = 6;
         test = 5 & 4;
     }

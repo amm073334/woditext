@@ -26,7 +26,7 @@ private:
 	int highest_var_stackpos = VAR_STACK_START;
 	int temp_stackpos = TEMP_STACK_START;
 	int lowest_temp_stackpos = TEMP_STACK_START;
-	var_type return_type = t_void;
+	var_type curr_return_type = t_void;
 	SymbolTable st;
 
 	void error(antlr4::ParserRuleContext *ctx, std::string message) const {
@@ -79,10 +79,35 @@ private:
 		return WodNumber(yobidasi, true);
 	}
 
-	// TODO: broken
+	/**
+	* Evaluate expr.
+	* @param ctx	Expr context
+	* @return		WodNumber containing result
+	*/
 	WodNumber eval_expr(woditextParser::ExprContext* ctx) {
 		try {
 			WodNumber result = std::any_cast<WodNumber>(ctx->accept(this));
+			return result;
+		}
+		catch (const std::bad_any_cast&) {
+			error(ctx, "expr did not return a WodNumber");
+		}
+		return WodNumber(0);
+	}
+
+	/**
+	* Evaluate expr, creating a new temporary to store integer literals if necessary.
+	* @param ctx	Expr context
+	* @return		WodNumber containing result
+	*/
+	WodNumber eval_safe(woditextParser::ExprContext* ctx) {
+		try {
+			WodNumber result = std::any_cast<WodNumber>(ctx->accept(this));
+			if (result.should_suppress_yobidasi()) {
+				WodNumber t = new_temp();
+				current_event->append(std::make_unique<ArithLine>(t, result.value, 0, ArithLine::af_yobanai1));
+				return t;
+			}
 			return result;
 		}
 		catch (const std::bad_any_cast&) {
@@ -107,19 +132,20 @@ public:
 		// handle return type
 		current_event->name = ctx->ID()->getText();
 		if (ctx->returntype()->T_VOID()) {
-			return_type = t_void;
+			curr_return_type = t_void;
 		}
 		else if (ctx->returntype()->T_INT()) {
-			return_type = t_int;
+			curr_return_type = t_int;
 			current_event->return_cself_id = INT_RETURN_INDEX;
 		}
 		else if (ctx->returntype()->T_STR()) {
-			return_type = t_str;
+			curr_return_type = t_str;
 			current_event->return_cself_id = STR_RETURN_INDEX;
 		}
 		else error(ctx, "unknown return type");
 		
 		// handle params
+		std::vector<var_type> param_types;
 		std::vector<woditextParser::ParamContext*> params = ctx->param();
 		for (auto iter = params.begin(); iter != params.end(); iter++) {
 			std::string name = (*iter)->ID()->getText();
@@ -127,16 +153,21 @@ public:
 				int index = current_event->new_int_param(name);
 				if (index < 0) error(ctx, "too many int parameters in common definition");
 				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_int));
+				param_types.push_back(t_int);
 			}
 			else if ((*iter)->vartype()->T_STR()) {
 				int index = current_event->new_str_param(name);
 				if (index < 0) error(ctx, "too many str parameters in common definition");
 				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_str));
+				param_types.push_back(t_str);
 			}
 			else {
 				error(ctx, "unexpected param type");
 			}
 		}
+
+		// make common event symbol
+		st.insert(CommonSymbol(ctx->ID()->getText(), curr_return_type, param_types));
 
 		// visit code
 		ctx->codeblock()->accept(this);
@@ -204,19 +235,9 @@ public:
 
 	std::any visitCountLoop(woditextParser::CountLoopContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		WodNumber arg = eval_expr(ctx->expr());
+		// this command does not support disabling variable references; do safe eval
+		WodNumber arg = eval_safe(ctx->expr());
 		temp_stackpos = saved_temp_pos;
-
-		// this command does not support disabling variable references
-		// if we have an integer literal number of loops that would cause a variable reference,
-		// create a new temporary to store the loop count first
-		if (arg.should_suppress_yobidasi()) {
-			int saved_temp_pos = temp_stackpos;
-			WodNumber t = new_temp();
-			temp_stackpos = saved_temp_pos;
-			current_event->append(std::make_unique<ArithLine>(t, arg.value, 0, ArithLine::af_yobanai1));
-			arg = t;
-		}
 
 		current_event->append(std::make_unique<LoopCountHeadLine>(arg));
 		st.open_scope();
@@ -244,7 +265,7 @@ public:
 			// if lhs has a variable type, statement is a declaration; create new variable
 			new_var(varname);
 		}
-		VarSymbol* dest_symbol = st.lookup(varname);
+		VarSymbol* dest_symbol = st.lookup_var(varname);
 
 		// get assignment type
 		ArithLine::assign_type assign = ArithLine::assign_eq;
@@ -288,9 +309,17 @@ public:
 	}
 	
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
-		VarSymbol* symbol = st.lookup(ctx->ID()->getText());
+		VarSymbol* symbol = st.lookup_var(ctx->ID()->getText());
 		if (symbol) return WodNumber(symbol->yobidasi, true);
 		else error(ctx, "id: lookup for symbol " + ctx->ID()->getText() + " failed");
+		return std::any();
+	}
+
+	std::any visitCallExpr(woditextParser::CallExprContext* ctx) override {
+		CommonSymbol* symbol = st.lookup_common(ctx->ID()->getText());
+		if (symbol) {
+
+		}
 		return std::any();
 	}
 	
