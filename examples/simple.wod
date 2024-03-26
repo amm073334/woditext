@@ -1,5 +1,17 @@
 // comment
 int test_func(int param, str string, int another) {
+    loop {
+        int test = 5;
+        test += 1;
+    }
+
+    loop (12378132) {
+        int test = 6;
+        test = 5 & 4;
+    }
+
+    loop (param) another = 2;
+
     int test;
     int test2 = 5;
     test = param;

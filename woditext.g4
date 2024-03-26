@@ -33,9 +33,9 @@ vartype
     ;
 
 loopstmt
-    : LOOP codeblock
-    | LOOP '(' expr ')' codeblock
-    | WHILE '(' expr ')' codeblock
+    : LOOP stmt                    # ForeverLoop
+    | LOOP '(' expr ')' stmt       # CountLoop
+    | WHILE '(' expr ')' stmt      # WhileLoop
     ;
 
 stmt

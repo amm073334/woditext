@@ -195,6 +195,41 @@ public:
 		return std::any();
 	}
 
+	std::any visitForeverLoop(woditextParser::ForeverLoopContext* ctx) override {
+		current_event->append(std::make_unique<LoopForeverHeadLine>());
+		st.open_scope();
+		ctx->stmt()->accept(this);
+		st.close_scope();
+		current_event->append(std::make_unique<EmptyLine>());
+		current_event->append(std::make_unique<LoopEndLine>());
+		return std::any();
+	}
+
+	std::any visitCountLoop(woditextParser::CountLoopContext* ctx) override {
+		int saved_temp_pos = temp_stackpos;
+		WodNumber arg = eval_expr(ctx->expr());
+		temp_stackpos = saved_temp_pos;
+
+		// this command does not support disabling variable references
+		// if we have an integer literal number of loops that would cause a variable reference,
+		// create a new temporary to store the loop count first
+		if (arg.should_suppress_yobidasi()) {
+			int saved_temp_pos = temp_stackpos;
+			WodNumber t = new_temp();
+			temp_stackpos = saved_temp_pos;
+			current_event->append(std::make_unique<ArithLine>(t, arg.value, 0, ArithLine::af_yobanai1));
+			arg = t;
+		}
+
+		current_event->append(std::make_unique<LoopCountHeadLine>(arg));
+		st.open_scope();
+		ctx->stmt()->accept(this);
+		st.close_scope();
+		current_event->append(std::make_unique<EmptyLine>());
+		current_event->append(std::make_unique<LoopEndLine>());
+		return std::any();
+	}
+
 	std::any visitAssign(woditextParser::AssignContext* ctx) override {
 		
 		std::string varname = ctx->lhs()->ID()->getText();
@@ -248,7 +283,7 @@ public:
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
 		VarSymbol* symbol = st.lookup(ctx->ID()->getText());
 		if (symbol) return WodNumber(symbol->yobidasi, true);
-		else error(ctx, "id: lookup failed");
+		else error(ctx, "id: lookup for symbol " + ctx->ID()->getText() + " failed");
 		return std::any();
 	}
 	

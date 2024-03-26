@@ -210,7 +210,6 @@ private:
 class ElseBranchLine : public Line {
 public:
     int32_t get_command_id() override { return 420; }
-    ElseBranchLine() {}
 private:
     int32_t mysterious_arg = 0;
     void update_base_data() override {
@@ -222,6 +221,58 @@ private:
 class EndBranchLine : public Line {
 public:
     int32_t get_command_id() override { return 499; }
+private:
+    void update_base_data() override {
+        int_fields = {};
+        str_fields = {};
+    }
+};
+
+class LoopForeverHeadLine : public Line {
+public:
+    int32_t get_command_id() override { return 170; }
+private:
+    void update_base_data() override {
+        int_fields = {};
+        str_fields = {};
+    }
+};
+
+class LoopCountHeadLine : public Line {
+public:
+    int32_t get_command_id() override { return 179; }
+    LoopCountHeadLine(WodNumber loop_times) : loop_times(loop_times.value) {}
+private:
+    int32_t loop_times;
+    void update_base_data() override {
+        int_fields = { loop_times };
+        str_fields = {};
+    }
+};
+
+class LoopEndLine : public Line {
+public:
+    int32_t get_command_id() override { return 498; }
+private:
+    void update_base_data() override {
+        int_fields = {};
+        str_fields = {};
+    }
+};
+
+class BreakLine : public Line {
+public:
+    int32_t get_command_id() override { return 171; }
+private:
+    void update_base_data() override {
+        int_fields = {};
+        str_fields = {};
+    }
+};
+
+class ContinueLine : public Line {
+public:
+    int32_t get_command_id() override { return 176; }
 private:
     void update_base_data() override {
         int_fields = {};
