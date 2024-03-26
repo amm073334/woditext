@@ -149,18 +149,15 @@ public:
 	}
 
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
-		int saved_temp_pos = temp_stackpos;
-		WodNumber rhs = eval_expr(ctx->expr());
-		temp_stackpos = saved_temp_pos;
+		if (ctx->expr()) {
+			int saved_temp_pos = temp_stackpos;
+			WodNumber rhs = eval_expr(ctx->expr());
+			temp_stackpos = saved_temp_pos;
 
-		// assign to var
-		current_event->append(
-			std::make_unique<ArithLine>(
-				CSELF_YOBIDASI + INT_RETURN_INDEX,
-				rhs, 0,
-				ArithLine::assign_eq | ArithLine::op_plus
-			)
-		);
+			// assign to var
+			current_event->append(std::make_unique<ArithLine>(
+					CSELF_YOBIDASI + INT_RETURN_INDEX, rhs, 0, 0));
+		}
 		current_event->append(std::make_unique<ReturnLine>());
 
 		return std::any();
@@ -227,6 +224,16 @@ public:
 		st.close_scope();
 		current_event->append(std::make_unique<EmptyLine>());
 		current_event->append(std::make_unique<LoopEndLine>());
+		return std::any();
+	}
+
+	std::any visitBreak(woditextParser::BreakContext* ctx) override {
+		current_event->append(std::make_unique<BreakLine>());
+		return std::any();
+	}
+
+	std::any visitContinue(woditextParser::ContinueContext* ctx) override {
+		current_event->append(std::make_unique<ContinueLine>());
 		return std::any();
 	}
 

@@ -54,7 +54,8 @@ linestmt
     | lhs '/=' expr     # Assign
     | lhs '%=' expr     # Assign
     | BREAK             # Break
-    | RETURN expr       # Return
+    | CONTINUE          # Continue
+    | RETURN expr?      # Return
     ;
 
 lhs
@@ -115,6 +116,7 @@ AS_DEQ: '/=';
 LOOP: 'loop' | 'ループ';
 WHILE: 'while';
 BREAK: 'break' | 'ループ中断';
+CONTINUE: 'continue' | 'ループ開始へ';
 RETURN: 'return';
 
 TRUE: 'true';
