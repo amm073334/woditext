@@ -81,7 +81,8 @@ expr
     | expr ('&') expr                       # BinopExpr
     | '(' expr ')'                          # ParenExpr
     | ID                                    # IdExpr
-    | NUM                                   # NumExpr
+    | NUM                                   # NumLit
+    | (TRUE | FALSE)                        # BoolLit
     ;
 
 
@@ -115,6 +116,9 @@ LOOP: 'loop' | 'ループ';
 WHILE: 'while';
 BREAK: 'break' | 'ループ中断';
 RETURN: 'return';
+
+TRUE: 'true';
+FALSE: 'false';
 
 UDB: 'UDB';
 CDB: 'CDB';

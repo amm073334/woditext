@@ -229,7 +229,7 @@ public:
 		return std::any();
 	}
 
-	std::any visitNumExpr(woditextParser::NumExprContext* ctx) override {
+	std::any visitNumLit(woditextParser::NumLitContext* ctx) override {
 		std::string text = ctx->NUM()->getText();
 		try {
 			return WodNumber(static_cast<int32_t>(stoi(text, 0)));
@@ -238,6 +238,11 @@ public:
 			error(ctx, "integer literal " + text + " is too large to fit in a signed 32-bit integer");
 		}
 		return std::any();
+	}
+
+	std::any visitBoolLit(woditextParser::BoolLitContext* ctx) override {
+		if (ctx->TRUE()) return WodNumber(1);
+		else return WodNumber(0);
 	}
 	
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
@@ -279,11 +284,8 @@ public:
 		else error(ctx, "no matching op");
 
 		WodNumber tempvar = new_temp();
-		current_event->append(
-			std::make_unique<ArithLine>(
-				tempvar, left, right, ArithLine::assign_eq | op
-			)
-		);
+		current_event->append(std::make_unique<ArithLine>(
+				tempvar, left, right, ArithLine::assign_eq | op));
 		
 		return tempvar;
 	}

@@ -21,6 +21,8 @@ int test_func(int param, str string, int another) {
     else test += 3;
 
     if (test > test2) return 1;
+
+    if (false) return 1234;
 }
 
 void test2() {
