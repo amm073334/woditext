@@ -84,7 +84,7 @@ private:
 	* @param ctx	Expr context
 	* @return		WodNumber containing result
 	*/
-	WodNumber eval_expr(woditextParser::ExprContext* ctx) {
+	WodNumber eval_unsafe(woditextParser::ExprContext* ctx) {
 		try {
 			WodNumber result = std::any_cast<WodNumber>(ctx->accept(this));
 			return result;
@@ -182,7 +182,7 @@ public:
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
 		if (ctx->expr()) {
 			int saved_temp_pos = temp_stackpos;
-			WodNumber rhs = eval_expr(ctx->expr());
+			WodNumber rhs = eval_unsafe(ctx->expr());
 			temp_stackpos = saved_temp_pos;
 
 			// assign to var
@@ -196,7 +196,7 @@ public:
 
 	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		WodNumber condition = eval_expr(ctx->expr());
+		WodNumber condition = eval_unsafe(ctx->expr());
 		temp_stackpos = saved_temp_pos;
 
 		std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(condition, 0, IntIfHeadLine::op_neq);
@@ -239,7 +239,7 @@ public:
 		WodNumber arg = eval_safe(ctx->expr());
 		temp_stackpos = saved_temp_pos;
 
-		current_event->append(std::make_unique<LoopCountHeadLine>(arg));
+		current_event->append(std::make_unique<LoopCountHeadLine>(arg.value));
 		st.open_scope();
 		ctx->stmt()->accept(this);
 		st.close_scope();
@@ -276,17 +276,12 @@ public:
 
 		// eval
 		int saved_temp_pos = temp_stackpos;
-		WodNumber rhs = eval_expr(ctx->expr());
+		WodNumber rhs = eval_unsafe(ctx->expr());
 		temp_stackpos = saved_temp_pos;
 
 		// assign to var
-		current_event->append(
-			std::make_unique<ArithLine>(
-				WodNumber(dest_symbol->yobidasi, true),
-				rhs, 0,
-				assign | ArithLine::op_plus
-			)
-		);
+		current_event->append(std::make_unique<ArithLine>(
+				WodNumber(dest_symbol->yobidasi, true), rhs, 0, assign));
 
 		// restore temp stack
 		return std::any();
@@ -316,10 +311,36 @@ public:
 	}
 
 	std::any visitCallExpr(woditextParser::CallExprContext* ctx) override {
-		CommonSymbol* symbol = st.lookup_common(ctx->ID()->getText());
+		std::string name = ctx->ID()->getText();
+		CommonSymbol* symbol = st.lookup_common(name);
 		if (symbol) {
+			
+			// check if number of args matches
+			int numargs = ctx->expr().size();
+			if (numargs != symbol->params.size()) error(ctx, "wrong number of params in call");
+			
+			int saved_stack_pos = temp_stackpos;
+			// eval args
+			std::vector<int32_t> int_args;
+			std::vector<int32_t> str_args;
+			for (int i = 0; i < numargs; i++) {
+				if (symbol->params.at(i) == t_int) {
+					int_args.push_back(eval_safe(ctx->expr(i)).value);
+				}
+				else if (symbol->params.at(i) == t_str) {
+					str_args.push_back(eval_safe(ctx->expr(i)).value);
+				} else error(ctx, "no such basetype");
+			}
+			temp_stackpos = saved_stack_pos;
+
+			// insert line
+			WodNumber tempvar = new_temp();
+			current_event->append(std::make_unique<CallByNameLine>(name, int_args, str_args, tempvar.value));
+
+			return tempvar;
 
 		}
+		else error(ctx, "id: lookup for common event " + ctx->ID()->getText() + " failed");
 		return std::any();
 	}
 	
@@ -329,7 +350,7 @@ public:
 	
 	std::any visitUnaryMinusExpr(woditextParser::UnaryMinusExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		WodNumber arg = eval_expr(ctx->expr());
+		WodNumber arg = eval_unsafe(ctx->expr());
 		temp_stackpos = saved_temp_pos;
 
 		WodNumber tempvar = new_temp();
@@ -341,8 +362,8 @@ public:
 	
 	std::any visitBinopExpr(woditextParser::BinopExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		WodNumber left = eval_expr(ctx->expr(0));
-		WodNumber right = eval_expr(ctx->expr(1));
+		WodNumber left = eval_unsafe(ctx->expr(0));
+		WodNumber right = eval_unsafe(ctx->expr(1));
 		temp_stackpos = saved_temp_pos;
 
 		ArithLine::arith_op op = ArithLine::op_plus;
@@ -363,7 +384,7 @@ public:
 	
 	std::any visitLogicalNotExpr(woditextParser::LogicalNotExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		WodNumber arg = eval_expr(ctx->expr());
+		WodNumber arg = eval_unsafe(ctx->expr());
 		temp_stackpos = saved_temp_pos;
 
 
@@ -387,8 +408,8 @@ public:
 
 	std::any visitBinopRelExpr(woditextParser::BinopRelExprContext* ctx) override {
 		int saved_temp_pos = temp_stackpos;
-		WodNumber left = eval_expr(ctx->expr(0));
-		WodNumber right = eval_expr(ctx->expr(1));
+		WodNumber left = eval_unsafe(ctx->expr(0));
+		WodNumber right = eval_unsafe(ctx->expr(1));
 		temp_stackpos = saved_temp_pos;
 
 		IntIfHeadLine::comp_op op = IntIfHeadLine::op_gt;

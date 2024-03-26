@@ -241,7 +241,7 @@ private:
 class LoopCountHeadLine : public Line {
 public:
     int32_t get_command_id() override { return 179; }
-    LoopCountHeadLine(WodNumber loop_times) : loop_times(loop_times.value) {}
+    LoopCountHeadLine(int32_t loop_times) : loop_times(loop_times) {}
 private:
     int32_t loop_times;
     void update_base_data() override {
@@ -283,10 +283,10 @@ private:
 class CallByNameLine : public Line {
 public:
     int32_t get_command_id() override { return 300; }
-    CallByNameLine(std::string name, std::vector<WodNumber> int_args, std::vector<WodNumber> str_args)
+    CallByNameLine(std::string name, std::vector<int32_t> int_args, std::vector<int32_t> str_args)
         : common_name(name), int_args(int_args), str_args(str_args)
         , flags(int_args.size() | (str_args.size() << 4)) {}
-    CallByNameLine(std::string name, std::vector<WodNumber> int_args, std::vector<WodNumber> str_args, WodNumber return_store)
+    CallByNameLine(std::string name, std::vector<int32_t> int_args, std::vector<int32_t> str_args, int32_t return_store)
         : common_name(name), int_args(int_args), str_args(str_args), return_store(return_store)
         , flags(int_args.size() | (str_args.size() << 4) | FLAG_HASRETURN) {}
     // TODO: support string literals -- use variants?
@@ -309,30 +309,30 @@ private:
     //              ^ bool: is 5th str arg a string literal?
     //    ^ bool: does call store return value?
     int32_t flags;
-    std::vector<WodNumber> int_args;
-    std::vector<WodNumber> str_args;
+    std::vector<int32_t> int_args;
+    std::vector<int32_t> str_args;
     std::string common_name;
-    WodNumber return_store = 0;
+    int32_t return_store = 0;
 
     void update_base_data() override {
         int_fields = { common_id, flags };
 
         // for string args, if a string literal is used instead of a variable reference, just insert 0 for its int field
         for (auto iter = int_args.begin(); iter != int_args.end(); iter++) {
-            int_fields.push_back(iter->value);
+            int_fields.push_back(*iter);
         }
         for (auto iter = str_args.begin(); iter != str_args.end(); iter++) {
-            int_fields.push_back(iter->value);
+            int_fields.push_back(*iter);
         }
 
         // if call stores the return value in a location, there needs to be one last int field for the variable ref
-        if (flags & FLAG_HASRETURN) int_fields.push_back(return_store.value);
+        if (flags & FLAG_HASRETURN) int_fields.push_back(return_store);
 
         str_fields = { common_name };
 
         // if any string literal box is checked, a string literal must be inserted for all args
         if (flags & MASK_HASSTRLIT) {
-
+            for (int i = 0; i < str_args.size(); i++) str_fields.push_back("");
         }
     }
 };
