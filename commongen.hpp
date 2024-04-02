@@ -267,6 +267,7 @@ public:
 			new_var(varname);
 		}
 		VarSymbol* dest_symbol = st.lookup_var(varname);
+		if (!dest_symbol) error(ctx, "undeclared variable '" + varname + "'");
 
 		// get assignment type
 		ArithLine::assign_type assign = ArithLine::assign_eq;
