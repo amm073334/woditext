@@ -47,6 +47,7 @@ stmt
 
 linestmt
     : vartype ID        # Decl
+    | ID '(' (expr (',' expr)*)? ')'   # CallStmt
     | lhs '=' expr      # Assign
     | lhs '+=' expr     # Assign
     | lhs '-=' expr     # Assign

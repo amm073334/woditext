@@ -82,7 +82,7 @@ class SymbolTable {
 private:
 	typedef std::unordered_map<std::string, std::unique_ptr<CommonSymbol>> CommonTable;
 	
-	CommonTable ctable;
+	CommonTable common_table;
 	std::unique_ptr<VarScope> head;
 	VarScope* curr_scope;
 
@@ -116,7 +116,7 @@ public:
 	* @return			True if successful, false if duplicate.
 	*/
 	bool insert(CommonSymbol symbol) {
-		std::pair<CommonTable::iterator, bool> res = ctable.insert(
+		std::pair<CommonTable::iterator, bool> res = common_table.insert(
 			std::make_pair(symbol.name, std::make_unique<CommonSymbol>(symbol)));
 		return res.second;
 	}
@@ -136,8 +136,8 @@ public:
 	* @return			Pointer to the associated symbol, or a null pointer if not found.
 	*/
 	CommonSymbol* lookup_common(std::string name) {
-		CommonTable::iterator res = ctable.find(name);
-		if (res != ctable.end()) return res->second.get();		// found; return pointer
+		CommonTable::iterator res = common_table.find(name);
+		if (res != common_table.end()) return res->second.get();		// found; return pointer
 		else return nullptr;									// not found; return nullptr
 	}
 };

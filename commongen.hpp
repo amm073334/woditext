@@ -124,7 +124,6 @@ public:
 		var_stackpos = VAR_STACK_START;
 		temp_stackpos = TEMP_STACK_START;
 		lowest_temp_stackpos = TEMP_STACK_START;
-		st = SymbolTable();
 
 		// make new commonevent
 		current_event = cf.add_common(std::make_unique<CommonEvent>());
@@ -170,7 +169,9 @@ public:
 		st.insert(CommonSymbol(ctx->ID()->getText(), curr_return_type, param_types));
 
 		// visit code
+		st.open_scope();
 		ctx->codeblock()->accept(this);
+		st.close_scope();
 
 		// if a common is completely blank, the engine will determine commonevent.dat as corrupted
 		// append an empty line at the end of the common to alleviate this
@@ -284,6 +285,37 @@ public:
 				WodNumber(dest_symbol->yobidasi, true), rhs, 0, assign));
 
 		// restore temp stack
+		return std::any();
+	}
+
+	std::any visitCallStmt(woditextParser::CallStmtContext* ctx) override {
+		std::string name = ctx->ID()->getText();
+		CommonSymbol* symbol = st.lookup_common(name);
+		if (symbol) {
+
+			// check if number of args matches
+			int numargs = ctx->expr().size();
+			if (numargs != symbol->params.size()) error(ctx, "wrong number of params in call");
+
+			int saved_stack_pos = temp_stackpos;
+			// eval args
+			std::vector<int32_t> int_args;
+			std::vector<int32_t> str_args;
+			for (int i = 0; i < numargs; i++) {
+				if (symbol->params.at(i) == t_int) {
+					int_args.push_back(eval_safe(ctx->expr(i)).value);
+				}
+				else if (symbol->params.at(i) == t_str) {
+					str_args.push_back(eval_safe(ctx->expr(i)).value);
+				}
+				else error(ctx, "no such basetype");
+			}
+			temp_stackpos = saved_stack_pos;
+
+			// insert line
+			current_event->append(std::make_unique<CallByNameLine>(name, int_args, str_args));
+		}
+		else error(ctx, "id: lookup for common event " + ctx->ID()->getText() + " failed");
 		return std::any();
 	}
 
