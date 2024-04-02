@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <variant>
 
 /**
 * Wrapper for an int32_t to distinguish between normal integers and yobidasi hensuu.
@@ -13,10 +14,10 @@ public:
     bool should_suppress_yobidasi() const { return !is_ref && value >= YOBIDASI_THRESHOLD; }
     bool is_malformed() const { return is_ref && value <= YOBIDASI_THRESHOLD; }
     int32_t value;
-private:
+    bool is_ref;
+
     // Where the engine begins to interpret integers as references.
     static const int32_t YOBIDASI_THRESHOLD = 1000000;
-    bool is_ref;
 };
 
 /**
@@ -333,6 +334,98 @@ private:
         // if any string literal box is checked, a string literal must be inserted for all args
         if (flags & MASK_HASSTRLIT) {
             for (int i = 0; i < str_args.size(); i++) str_fields.push_back("");
+        }
+    }
+};
+
+class DBLine : public Line {
+public:
+    int32_t get_command_id() override { return 250; }
+
+    // Whether or not to treat the value in assign as a reference.
+    static const int32_t FLAG_XBAN_YOBIDASI = 0x1;
+
+    // Whether or not to assign a DB value into a variable--the default is to assign a variable value into the DB.
+    static const int32_t FLAG_ASSIGN_TO_VAR = 0x1000;
+
+    enum db_type {
+        cdb = 0x000,
+        sdb = 0x100,
+        udb = 0x200
+    };
+
+    enum assign_type {
+        assign_eq       = 0x00,
+        assign_plus_eq  = 0x10,
+        assign_minus_eq = 0x20,
+        assign_times_eq = 0x30,
+        assign_div_eq   = 0x40,
+        assign_mod_eq   = 0x50,
+        assign_low_bound= 0x60,
+        assign_up_bound = 0x70
+    };
+
+    typedef std::variant<int32_t, std::string> num_or_str;
+    DBLine(num_or_str type, num_or_str data, num_or_str value, int32_t flags, num_or_str assign) : flags(flags) {
+        if (const std::string* p = std::get_if<std::string>(&type)) {
+            this->flags |= FLAG_STRING_TYPE;
+            type_str = *p;
+        }
+        else {
+            type_num = std::get<int32_t>(type);
+        }
+
+        if (const std::string* p = std::get_if<std::string>(&data)) {
+            this->flags |= FLAG_STRING_DATA;
+            data_str = *p;
+        }
+        else {
+            data_num = std::get<int32_t>(data);
+        }
+
+        if (const std::string* p = std::get_if<std::string>(&value)) {
+            this->flags |= FLAG_STRING_VALUE;
+            value_str = *p;
+        }
+        else {
+            value_num = std::get<int32_t>(value);
+        }
+
+        if (const std::string* p = std::get_if<std::string>(&assign)) {
+            this->flags |= FLAG_USE_STRINGLIT;
+            assign_str = *p;
+        }
+        else {
+            assign_num = std::get<int32_t>(assign);
+        }
+    }
+    
+private:
+    static const int32_t FLAG_USE_STRINGLIT = 0x2;
+    static const int32_t FLAG_STRING_TYPE  = 0x10000;
+    static const int32_t FLAG_STRING_DATA  = 0x20000;
+    static const int32_t FLAG_STRING_VALUE = 0x40000;
+
+    int32_t type_num = 0;
+    int32_t data_num = 0;
+    int32_t value_num = 0;
+    int32_t flags = 0;
+    int32_t assign_num = 0;
+
+    std::string type_str;
+    std::string data_str;
+    std::string value_str;
+    std::string assign_str;
+
+    void update_base_data() override {
+        // in the case that a string literal is being assigned, there are only four int fields
+        if (flags & FLAG_USE_STRINGLIT) {
+            int_fields = { type_num, data_num, value_num, flags };
+            str_fields = { assign_str, type_str, data_str, value_str };
+        }
+        else {
+            int_fields = { type_num, data_num, value_num, flags, assign_num };
+            str_fields = { "", type_str, data_str, value_str };
         }
     }
 };

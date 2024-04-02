@@ -62,18 +62,16 @@ linestmt
 lhs
     : vartype ID
     | ID
+    | dbaccess
     ;
 
 dbaccess
-    : (UDB | CDB | SDB) dbattr dbattr dbattr
-    ;
-
-dbattr
-    : '[' (NUM | STRING) ']'
+    : (UDB | CDB | SDB) '[' expr ']' '[' expr ']' '[' expr ']'
     ;
 
 expr
     : ID '(' (expr (',' expr)*)? ')'        # CallExpr
+    | dbaccess                              # DBExpr
     | '-' expr                              # UnaryMinusExpr
     | '!' expr                              # LogicalNotExpr
     | expr ('*' | '/' | '%') expr           # BinopExpr
@@ -85,6 +83,7 @@ expr
     | ID                                    # IdExpr
     | NUM                                   # NumLit
     | (TRUE | FALSE)                        # BoolLit
+    | STRING                                # StringLit
     ;
 
 

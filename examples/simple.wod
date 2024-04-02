@@ -1,6 +1,5 @@
 // comment
 int test_func(int param, str string, int another) {
-    hafdkjs = 4;
     int a = test_func(2 + param, 1600005, 1600005);
     test_func(1, 2, 3);
     ループ {
@@ -18,6 +17,7 @@ int test_func(int param, str string, int another) {
         test = 5 & 4;
     }
     
+    a += CDB[23][param][1];
 
     loop (param) another = 2;
 

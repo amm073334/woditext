@@ -80,7 +80,8 @@ private:
 	}
 
 	/**
-	* Evaluate expr.
+	* Evaluate expr, but do not create a new temporary to store integer literals.
+	* Use this when the WodNumber is to be used in a command that has support for disabling variable references.
 	* @param ctx	Expr context
 	* @return		WodNumber containing result
 	*/
@@ -96,7 +97,8 @@ private:
 	}
 
 	/**
-	* Evaluate expr, creating a new temporary to store integer literals if necessary.
+	* Evaluate expr, creating a new temporary to store large integer literals if necessary.
+	* Use this when the WodNumber is to be used in a command that does not have support for disabling references.
 	* @param ctx	Expr context
 	* @return		WodNumber containing result
 	*/
@@ -335,7 +337,28 @@ public:
 		if (ctx->TRUE()) return WodNumber(1);
 		else return WodNumber(0);
 	}
-	
+
+	std::any visitDBExpr(woditextParser::DBExprContext* ctx) override {
+		WodNumber typenum = eval_safe(ctx->dbaccess()->expr(0));
+		if (!typenum.is_ref && typenum.value > 99) error(ctx, "attempted to reference DB typenum greater than 99");
+		WodNumber datanum = eval_safe(ctx->dbaccess()->expr(1));
+		WodNumber valuenum = eval_safe(ctx->dbaccess()->expr(2));
+
+		DBLine::db_type db;
+		if (ctx->dbaccess()->CDB())			db = DBLine::cdb;
+		else if (ctx->dbaccess()->SDB())	db = DBLine::sdb;
+		else /* UDB */						db = DBLine::udb;
+
+		WodNumber tempvar = new_temp();
+		current_event->append(std::make_unique<DBLine>(
+			typenum.value, datanum.value, valuenum.value, 
+			db | DBLine::FLAG_ASSIGN_TO_VAR, 
+			tempvar.value
+		));
+
+		return tempvar;
+	}
+
 	std::any visitIdExpr(woditextParser::IdExprContext* ctx) override {
 		VarSymbol* symbol = st.lookup_var(ctx->ID()->getText());
 		if (symbol) return WodNumber(symbol->yobidasi, true);
