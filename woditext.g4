@@ -130,7 +130,7 @@ T_INT: 'int' | '整数' ;
 T_STR: 'str' | '文字列' ;
 T_VOID: 'void' | 'ボイド';
 
-ID: [_a-zA-Z][_a-zA-Z0-9]*;
+ID: [_\p{Alpha}\p{General_Category=Other_Letter}][_\p{Alnum}\p{General_Category=Other_Letter}]*;
 
 STRING: '"' [^"]* '"';
 

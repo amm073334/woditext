@@ -31,9 +31,9 @@ private:
 
 	void error(antlr4::ParserRuleContext *ctx, std::string message) const {
 		std::cout 
-			<< ctx->getStart()->getLine() << "\t" << ctx->getText()		<< std::endl
 			<< "ERROR:  " << message									<< std::endl
 			<< "common: " << current_event->name						<< std::endl
+			<< "line:   " << ctx->getStart()->getLine()					<< std::endl
 			<< "col:    " << ctx->getStart()->getCharPositionInLine()	<< std::endl;
 		exit(1);
 	}
