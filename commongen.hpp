@@ -31,9 +31,9 @@ private:
 
 	void error(antlr4::ParserRuleContext *ctx, std::string message) const {
 		std::cout 
+			<< ctx->getStart()->getLine() << "\t" << ctx->getText()		<< std::endl
 			<< "ERROR:  " << message									<< std::endl
 			<< "common: " << current_event->name						<< std::endl
-			<< "line:   " << ctx->getStart()->getLine()					<< std::endl
 			<< "col:    " << ctx->getStart()->getCharPositionInLine()	<< std::endl;
 		exit(1);
 	}
@@ -263,31 +263,65 @@ public:
 
 	std::any visitAssign(woditextParser::AssignContext* ctx) override {
 		
-		std::string varname = ctx->lhs()->ID()->getText();
-		if (ctx->lhs()->vartype()) {
-			// if lhs has a variable type, statement is a declaration; create new variable
-			new_var(varname);
+		// assign to db
+		if (woditextParser::DbaccessContext* dbctx = ctx->lhs()->dbaccess()) {
+			WodNumber typenum = eval_safe(dbctx->expr(0));
+			if (!typenum.is_ref && typenum.value > 99) error(ctx, "attempted to reference DB typenum greater than 99");
+			WodNumber datanum = eval_safe(dbctx->expr(1));
+			WodNumber valuenum = eval_safe(dbctx->expr(2));
+
+			DBLine::db_type db;
+			if (dbctx->CDB())			db = DBLine::cdb;
+			else if (dbctx->SDB())		db = DBLine::sdb;
+			else /* UDB */				db = DBLine::udb;
+
+			DBLine::assign_type assign;
+			if		(ctx->AS_EQ())  assign = DBLine::assign_eq;
+			else if (ctx->AS_PEQ()) assign = DBLine::assign_plus_eq;
+			else if (ctx->AS_MEQ()) assign = DBLine::assign_minus_eq;
+			else if (ctx->AS_TEQ()) assign = DBLine::assign_times_eq;
+			else if (ctx->AS_DEQ()) assign = DBLine::assign_div_eq;
+			else /* mod eq */		assign = DBLine::assign_mod_eq;
+
+			// eval assignment expr
+			int saved_temp_pos = temp_stackpos;
+			WodNumber rhs = eval_safe(ctx->expr());
+			temp_stackpos = saved_temp_pos;
+
+			current_event->append(std::make_unique<DBLine>(
+				typenum.value, datanum.value, valuenum.value, assign, rhs.value
+			));
+
+		} 
+		// assign to variable
+		else {
+			std::string varname = ctx->lhs()->ID()->getText();
+			if (ctx->lhs()->vartype()) {
+				// if lhs has a variable type, statement is a declaration; create new variable
+				new_var(varname);
+			}
+			VarSymbol* dest_symbol = st.lookup_var(varname);
+			if (dest_symbol) {
+				// get assignment type
+				ArithLine::assign_type assign;
+				if		(ctx->AS_EQ())  assign = ArithLine::assign_eq;
+				else if (ctx->AS_PEQ()) assign = ArithLine::assign_plus_eq;
+				else if (ctx->AS_MEQ()) assign = ArithLine::assign_minus_eq;
+				else if (ctx->AS_TEQ()) assign = ArithLine::assign_times_eq;
+				else if (ctx->AS_DEQ()) assign = ArithLine::assign_div_eq;
+				else /* mod eq */		assign = ArithLine::assign_mod_eq;
+
+				// eval
+				int saved_temp_pos = temp_stackpos;
+				WodNumber rhs = eval_unsafe(ctx->expr());
+				temp_stackpos = saved_temp_pos;
+
+				// assign to var
+				current_event->append(std::make_unique<ArithLine>(
+						WodNumber(dest_symbol->yobidasi, true), rhs, 0, assign));
+			} else error(ctx, "undeclared variable '" + varname + "'");
 		}
-		VarSymbol* dest_symbol = st.lookup_var(varname);
-		if (!dest_symbol) error(ctx, "undeclared variable '" + varname + "'");
-
-		// get assignment type
-		ArithLine::assign_type assign = ArithLine::assign_eq;
-		if (ctx->AS_PEQ()) assign = ArithLine::assign_plus_eq;
-		else if (ctx->AS_MEQ()) assign = ArithLine::assign_minus_eq;
-		else if (ctx->AS_TEQ()) assign = ArithLine::assign_times_eq;
-		else if (ctx->AS_DEQ()) assign = ArithLine::assign_div_eq;
-
-		// eval
-		int saved_temp_pos = temp_stackpos;
-		WodNumber rhs = eval_unsafe(ctx->expr());
-		temp_stackpos = saved_temp_pos;
-
-		// assign to var
-		current_event->append(std::make_unique<ArithLine>(
-				WodNumber(dest_symbol->yobidasi, true), rhs, 0, assign));
-
-		// restore temp stack
+		
 		return std::any();
 	}
 

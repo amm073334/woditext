@@ -72,7 +72,13 @@ public:
         assign_minus_eq    = 0x200,
         assign_times_eq    = 0x300,
         assign_div_eq      = 0x400,
-        assign_mod_eq      = 0x500
+        assign_mod_eq      = 0x500,
+        assign_low_bound   = 0x600,
+        assign_high_bound  = 0x700,
+        assign_abs         = 0x800,
+        assign_atan        = 0xf900, // for whatever reason, atan seems to have an extra F
+        assign_sin         = 0xa00,
+        assign_cos         = 0xb00
     };
 
     enum arith_op {
@@ -85,13 +91,13 @@ public:
     };
 
     enum misc_flags {
-        af_limit       = 0x01,
-        af_jissuu      = 0x02,
+        af_limit       = 0x01, // limit to +-999999
+        af_jissuu      = 0x02, // é¿êîåvéZ
         af_yobanai1    = 0x04,
         af_yobanai2    = 0x08,
-        af_yob_store   = 0x10,
-        af_yob_arg1    = 0x20,
-        af_yob_arg2    = 0x40
+        af_xban_dst    = 0x10,
+        af_xban1       = 0x20,
+        af_xban2       = 0x40
     };
 
     ArithLine(WodNumber dest, WodNumber arg0, WodNumber arg1, int32_t flags)
@@ -355,14 +361,14 @@ public:
     };
 
     enum assign_type {
-        assign_eq       = 0x00,
-        assign_plus_eq  = 0x10,
-        assign_minus_eq = 0x20,
-        assign_times_eq = 0x30,
-        assign_div_eq   = 0x40,
-        assign_mod_eq   = 0x50,
-        assign_low_bound= 0x60,
-        assign_up_bound = 0x70
+        assign_eq           = 0x00,
+        assign_plus_eq      = 0x10,
+        assign_minus_eq     = 0x20,
+        assign_times_eq     = 0x30,
+        assign_div_eq       = 0x40,
+        assign_mod_eq       = 0x50,
+        assign_low_bound    = 0x60,
+        assign_high_bound   = 0x70
     };
 
     typedef std::variant<int32_t, std::string> num_or_str;

@@ -17,7 +17,8 @@ int test_func(int param, str string, int another) {
         test = 5 & 4;
     }
     
-    a += CDB[23][param][1];
+    a += CDB[23][param][1] + UDB[1][2][3] / SDB[3][2][1];
+    UDB[2][3][4] = a + 2;
 
     loop (param) another = 2;
 
