@@ -68,7 +68,11 @@ lhs
     ;
 
 dbaccess
-    : (UDB | CDB | SDB) '[' expr ']' '[' expr ']' '[' expr ']'
+    : (UDB | CDB | SDB) '[' expr_or_str ']' '[' expr_or_str ']' '[' expr_or_str ']'
+    ;
+
+expr_or_str
+    : expr | STRING
     ;
 
 expr

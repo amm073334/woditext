@@ -126,6 +126,54 @@ private:
 		return WodNumber(0);
 	}
 
+	std::tuple<WodNumber, WodNumber>
+	eval_binop(woditextParser::ExprContext* ctx1, woditextParser::ExprContext* ctx2) {
+		try {
+			int_stack.save_temp();
+			WodNumber result1 = std::any_cast<WodNumber>(ctx1->accept(this));
+			if (result1.should_suppress_yobidasi()) {
+				WodNumber t = new_temp(t_int);
+				current_event->append(std::make_unique<ArithLine>(t, result1.value, 0, ArithLine::af_yobanai1));
+				result1 = t;
+			}
+
+			WodNumber result2 = std::any_cast<WodNumber>(ctx1->accept(this));
+			if (result2.should_suppress_yobidasi()) {
+				WodNumber t = new_temp(t_int);
+				current_event->append(std::make_unique<ArithLine>(t, result1.value, 0, ArithLine::af_yobanai1));
+				result2 = t;
+			}
+			int_stack.restore_temp();
+			return {result1, result2};
+		}
+		catch (const std::bad_any_cast&) {
+			assert(false);
+		}
+	}
+
+	/**
+	* Evaluate db access parameters.
+	* @ctx		Context of Dbaccess node.
+	* @return	Tuple of variants that are either numbers or string identifiers.
+	*/
+	std::tuple<num_or_str, num_or_str, num_or_str>
+	eval_dbaccess(woditextParser::DbaccessContext* ctx) {
+
+		std::variant<int32_t, std::string> type, data, value;
+		if (ctx->expr_or_str(0)->expr()) type = eval_safe(ctx->expr_or_str(0)->expr()).value;
+		else type = trim(ctx->expr_or_str(0)->STRING()->getText());
+		if (ctx->expr_or_str(1)->expr()) data = eval_safe(ctx->expr_or_str(1)->expr()).value;
+		else data = trim(ctx->expr_or_str(1)->STRING()->getText());
+		if (ctx->expr_or_str(2)->expr()) value = eval_safe(ctx->expr_or_str(2)->expr()).value;
+		else value = trim(ctx->expr_or_str(2)->STRING()->getText());
+
+		return {type, data, value};
+	}
+
+	std::string trim(std::string in) {
+		return in.substr(1, in.size() - 2);
+	}
+
 public:
 	CommonFile cf;
 
@@ -274,10 +322,7 @@ public:
 		
 		// assign to db
 		if (woditextParser::DbaccessContext* dbctx = ctx->lhs()->dbaccess()) {
-			WodNumber typenum = eval_safe(dbctx->expr(0));
-			if (!typenum.is_ref && typenum.value > 99) error(ctx, "attempted to reference DB typenum greater than 99");
-			WodNumber datanum = eval_safe(dbctx->expr(1));
-			WodNumber valuenum = eval_safe(dbctx->expr(2));
+			auto [type, data, value] = eval_dbaccess(dbctx);
 
 			DBLine::db_type db;
 			if (dbctx->CDB())			db = DBLine::cdb;
@@ -298,7 +343,7 @@ public:
 			int_stack.restore_temp();
 
 			current_event->append(std::make_unique<DBLine>(
-				typenum.value, datanum.value, valuenum.value, assign, rhs.value
+				type, data, value, assign, rhs.value
 			));
 
 		} 
@@ -369,10 +414,7 @@ public:
 		std::string dequoted = original.substr(1, original.size() - 2);
 		// assign to db
 		if (woditextParser::DbaccessContext* dbctx = ctx->lhs()->dbaccess()) {
-			WodNumber typenum = eval_safe(dbctx->expr(0));
-			if (!typenum.is_ref && typenum.value > 99) error(ctx, "attempted to reference DB typenum greater than 99");
-			WodNumber datanum = eval_safe(dbctx->expr(1));
-			WodNumber valuenum = eval_safe(dbctx->expr(2));
+			auto [type, data, value] = eval_dbaccess(dbctx);
 
 			DBLine::db_type db;
 			if (dbctx->CDB())			db = DBLine::cdb;
@@ -384,7 +426,7 @@ public:
 			else /* plus eq */ assign = DBLine::assign_plus_eq;
 
 			current_event->append(std::make_unique<DBLine>(
-				typenum.value, datanum.value, valuenum.value, assign, dequoted
+				type, data, value, assign, dequoted
 			));
 
 		}
@@ -462,10 +504,8 @@ public:
 	}
 
 	std::any visitDBExpr(woditextParser::DBExprContext* ctx) override {
-		WodNumber typenum = eval_safe(ctx->dbaccess()->expr(0));
-		if (!typenum.is_ref && typenum.value > 99) error(ctx, "attempted to reference DB typenum greater than 99");
-		WodNumber datanum = eval_safe(ctx->dbaccess()->expr(1));
-		WodNumber valuenum = eval_safe(ctx->dbaccess()->expr(2));
+		woditextParser::DbaccessContext* dbctx = ctx->dbaccess();
+		auto [type, data, value] = eval_dbaccess(dbctx);
 
 		DBLine::db_type db;
 		if (ctx->dbaccess()->CDB())			db = DBLine::cdb;
@@ -474,7 +514,7 @@ public:
 
 		WodNumber tempvar = new_temp(t_int);
 		current_event->append(std::make_unique<DBLine>(
-			typenum.value, datanum.value, valuenum.value, 
+			type, data, value, 
 			db | DBLine::FLAG_ASSIGN_TO_VAR, 
 			tempvar.value
 		));
