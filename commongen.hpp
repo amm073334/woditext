@@ -240,17 +240,34 @@ public:
 	}
 
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
+		
 		if (ctx->expr()) {
+			// eval
 			int_stack.save_temp();
 			WodNumber rhs = eval_unsafe(ctx->expr());
 			int_stack.restore_temp();
-
-			// assign to var
-			current_event->append(std::make_unique<ArithLine>(
+			if (curr_return_type == t_int) {
+				// assign to var
+				current_event->append(std::make_unique<ArithLine>(
 					CSELF_YOBIDASI + INT_RETURN_INDEX, rhs, 0, 0));
+			}
+			else /* string type destination */ {
+				current_event->append(std::make_unique<StringLine>(
+					CSELF_YOBIDASI + STR_RETURN_INDEX, StringLine::FLAG_COPY_STRVAR, rhs.value));
+			}
 		}
 		current_event->append(std::make_unique<ReturnLine>());
 
+		return std::any();
+	}
+
+	std::any visitStringReturn(woditextParser::StringReturnContext* ctx) override {
+		std::string dequoted = trim(ctx->STRING()->getText());
+		
+		// assign to var
+		current_event->append(std::make_unique<StringLine>(
+			CSELF_YOBIDASI + STR_RETURN_INDEX, 0, dequoted));
+		current_event->append(std::make_unique<ReturnLine>());
 		return std::any();
 	}
 
@@ -457,24 +474,27 @@ public:
 	}
 
 	std::any visitCallStmt(woditextParser::CallStmtContext* ctx) override {
-		std::string name = ctx->ID()->getText();
+		std::string name = ctx->call()->ID()->getText();
 		CommonSymbol* symbol = st.lookup_common(name);
 		if (symbol) {
 
 			// check if number of args matches
-			int numargs = ctx->expr().size();
+			int numargs = ctx->call()->expr_or_str().size();
 			if (numargs != symbol->params.size()) error(ctx, "wrong number of params in call");
 
 			int_stack.save_temp();
 			// eval args
 			std::vector<int32_t> int_args;
-			std::vector<int32_t> str_args;
+			std::vector<num_or_str> str_args;
 			for (int i = 0; i < numargs; i++) {
 				if (symbol->params.at(i) == t_int) {
-					int_args.push_back(eval_safe(ctx->expr(i)).value);
+					if (ctx->call()->expr_or_str(i)->STRING()) error(ctx, "tried to pass string literal into integer arg");
+					int_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 				}
 				else if (symbol->params.at(i) == t_str) {
-					str_args.push_back(eval_safe(ctx->expr(i)).value);
+					if (ctx->call()->expr_or_str(i)->expr())
+						str_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
+					else str_args.push_back(trim(ctx->call()->expr_or_str(i)->STRING()->getText()));
 				}
 				else error(ctx, "no such basetype");
 			}
@@ -483,7 +503,7 @@ public:
 			// insert line
 			current_event->append(std::make_unique<CallByNameLine>(name, int_args, str_args));
 		}
-		else error(ctx, "id: lookup for common event " + ctx->ID()->getText() + " failed");
+		else error(ctx, "id: lookup for common event " + ctx->call()->ID()->getText() + " failed");
 		return std::any();
 	}
 
@@ -512,6 +532,9 @@ public:
 		else if (ctx->dbaccess()->SDB())	db = DBLine::sdb;
 		else /* UDB */						db = DBLine::udb;
 
+		// NB: DB access used in an expression is assumed to retrieve an integer
+		// as the compiler doesn't know the DB layout, it doesn't error when a string is retrieved instead
+		// (but this will cause a runtime error)
 		WodNumber tempvar = new_temp(t_int);
 		current_event->append(std::make_unique<DBLine>(
 			type, data, value, 
@@ -530,24 +553,27 @@ public:
 	}
 
 	std::any visitCallExpr(woditextParser::CallExprContext* ctx) override {
-		std::string name = ctx->ID()->getText();
+		std::string name = ctx->call()->ID()->getText();
 		CommonSymbol* symbol = st.lookup_common(name);
 		if (symbol) {
 			
 			// check if number of args matches
-			int numargs = ctx->expr().size();
+			int numargs = ctx->call()->expr_or_str().size();
 			if (numargs != symbol->params.size()) error(ctx, "wrong number of params in call");
 			
 			int_stack.save_temp();
 			// eval args
 			std::vector<int32_t> int_args;
-			std::vector<int32_t> str_args;
+			std::vector<num_or_str> str_args;
 			for (int i = 0; i < numargs; i++) {
 				if (symbol->params.at(i) == t_int) {
-					int_args.push_back(eval_safe(ctx->expr(i)).value);
+					if (ctx->call()->expr_or_str(i)->STRING()) error(ctx, "tried to pass string literal into integer arg");
+					int_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 				}
 				else if (symbol->params.at(i) == t_str) {
-					str_args.push_back(eval_safe(ctx->expr(i)).value);
+					if (ctx->call()->expr_or_str(i)->expr())
+						str_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
+					else str_args.push_back(trim(ctx->call()->expr_or_str(i)->STRING()->getText()));
 				} else error(ctx, "no such basetype");
 			}
 			int_stack.restore_temp();
@@ -559,7 +585,7 @@ public:
 			return tempvar;
 
 		}
-		else error(ctx, "id: lookup for common event " + ctx->ID()->getText() + " failed");
+		else error(ctx, "id: lookup for common event " + ctx->call()->ID()->getText() + " failed");
 		return std::any();
 	}
 	

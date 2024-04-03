@@ -352,14 +352,32 @@ private:
 class CallByNameLine : public Line {
 public:
     int32_t get_command_id() override { return 300; }
-    CallByNameLine(std::string name, std::vector<int32_t> int_args, std::vector<int32_t> str_args)
+    CallByNameLine(std::string name, std::vector<int32_t> int_args, std::vector<num_or_str> str_args)
         : common_name(name), int_args(int_args), str_args(str_args)
-        , flags(int_args.size() | (str_args.size() << 4)) {}
-    CallByNameLine(std::string name, std::vector<int32_t> int_args, std::vector<int32_t> str_args, int32_t return_store)
+        , flags(int_args.size() | (str_args.size() << 4))
+    {
+        // handle string literal flags
+        int32_t flag = 0x1000;
+        for (auto iter = str_args.begin(); iter != str_args.end(); iter++) {
+            if (std::holds_alternative<std::string>(*iter)) {
+                flags |= flag;
+            }
+            flag <<= 1;
+        }
+    }
+    CallByNameLine(std::string name, std::vector<int32_t> int_args, std::vector<num_or_str> str_args, int32_t return_store)
         : common_name(name), int_args(int_args), str_args(str_args), return_store(return_store)
-        , flags(int_args.size() | (str_args.size() << 4) | FLAG_HASRETURN) {}
-    // TODO: support string literals -- use variants?
-    //
+        , flags(int_args.size() | (str_args.size() << 4) | FLAG_HASRETURN) 
+    {
+        // handle string literal flags
+        int32_t flag = 0x1000;
+        for (auto iter = str_args.begin(); iter != str_args.end(); iter++) {
+            if (std::holds_alternative<std::string>(*iter)) {
+                flags |= flag;
+            }
+            flag <<= 1;
+        }
+    }
 
 private:
     static const int32_t FLAG_HASRETURN = 0x1000000;
@@ -379,30 +397,42 @@ private:
     //    ^ bool: does call store return value?
     int32_t flags;
     std::vector<int32_t> int_args;
-    std::vector<int32_t> str_args;
+    std::vector<num_or_str> str_args;
     std::string common_name;
     int32_t return_store = 0;
 
     void update_base_data() override {
         int_fields = { common_id, flags };
+        str_fields = { common_name };
 
-        // for string args, if a string literal is used instead of a variable reference, just insert 0 for its int field
         for (auto iter = int_args.begin(); iter != int_args.end(); iter++) {
             int_fields.push_back(*iter);
         }
-        for (auto iter = str_args.begin(); iter != str_args.end(); iter++) {
-            int_fields.push_back(*iter);
+
+        // if any string literal box is checked, a string literal must be inserted for all args
+        if (flags & MASK_HASSTRLIT) {
+            // for string args, if a string literal is used instead of a variable reference, just insert 0 for its int field
+            for (auto iter = str_args.begin(); iter != str_args.end(); iter++) {
+                if (const std::string* p = std::get_if<std::string>(&*iter)) {
+                    int_fields.push_back(0);
+                    str_fields.push_back(*p);
+                }
+                else {
+                    int_fields.push_back(std::get<int32_t>(*iter));
+                    str_fields.push_back("");
+                }
+            }
+        }
+        // otherwise, just push variable references into int fields
+        else {
+            for (auto iter = str_args.begin(); iter != str_args.end(); iter++) {
+                int_fields.push_back(std::get<int32_t>(*iter));
+            }
         }
 
         // if call stores the return value in a location, there needs to be one last int field for the variable ref
         if (flags & FLAG_HASRETURN) int_fields.push_back(return_store);
 
-        str_fields = { common_name };
-
-        // if any string literal box is checked, a string literal must be inserted for all args
-        if (flags & MASK_HASSTRLIT) {
-            for (int i = 0; i < str_args.size(); i++) str_fields.push_back("");
-        }
     }
 };
 

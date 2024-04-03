@@ -47,7 +47,7 @@ stmt
 
 linestmt
     : vartype ID        # Decl
-    | ID '(' (expr (',' expr)*)? ')'   # CallStmt
+    | call              # CallStmt
     | lhs '=' expr      # Assign
     | lhs '+=' expr     # Assign
     | lhs '-=' expr     # Assign
@@ -59,6 +59,7 @@ linestmt
     | BREAK             # Break
     | CONTINUE          # Continue
     | RETURN expr?      # Return
+    | RETURN STRING     # StringReturn
     ;
 
 lhs
@@ -71,12 +72,16 @@ dbaccess
     : (UDB | CDB | SDB) '[' expr_or_str ']' '[' expr_or_str ']' '[' expr_or_str ']'
     ;
 
+call
+    : ID '(' (expr_or_str (',' expr_or_str)*)? ')'
+    ;
+
 expr_or_str
     : expr | STRING
     ;
 
 expr
-    : ID '(' (expr (',' expr)*)? ')'        # CallExpr
+    : call                                  # CallExpr
     | dbaccess                              # DBExpr
     | '-' expr                              # UnaryMinusExpr
     | '!' expr                              # LogicalNotExpr
