@@ -309,10 +309,17 @@ public:
 				// if lhs has a variable type, statement is a declaration; create new variable
 				if (ctx->lhs()->vartype()->T_INT()) {
 					new_var(varname, t_int);
-				} else error(ctx, "cannot assign string literal to integer variable");
+				} else {
+					new_var(varname, t_str);
+				}
 			}
 			VarSymbol* dest_symbol = st.lookup_var(varname);
-			if (dest_symbol) {
+			if (!dest_symbol) {
+				error(ctx, "undeclared variable '" + varname + "'");
+				return std::any();
+			}
+
+			if (dest_symbol->type == t_int) {
 				// get assignment type
 				ArithLine::assign_type assign;
 				if		(ctx->AS_EQ())  assign = ArithLine::assign_eq;
@@ -330,12 +337,32 @@ public:
 				// assign to var
 				current_event->append(std::make_unique<ArithLine>(
 						WodNumber(dest_symbol->yobidasi, true), rhs, 0, assign));
-			} else error(ctx, "undeclared variable '" + varname + "'");
+			}
+			else /* string type destination */ {
+
+				StringLine::assign_type assign;
+				if (ctx->AS_EQ())  assign = StringLine::assign_eq;
+				else if (ctx->AS_PEQ()) assign = StringLine::assign_plus_eq;
+				else {
+					error(ctx, "cannot use this assignment operator when assigning to a string variable");
+					return std::any();
+				}
+
+				int_stack.save_temp();
+				WodNumber rhs = eval_safe(ctx->expr());
+				int_stack.restore_temp();
+
+				current_event->append(std::make_unique<StringLine>(
+					dest_symbol->yobidasi, assign | StringLine::FLAG_COPY_STRVAR, rhs.value));
+
+			}
 		}
 		
 		return std::any();
 	}
 
+
+	// for assigning string literals
 	std::any visitStringAssign(woditextParser::StringAssignContext* ctx) override {
 
 		std::string original = ctx->STRING()->getText();
