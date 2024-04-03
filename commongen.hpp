@@ -537,7 +537,8 @@ public:
 
 	std::any visitDecl(woditextParser::DeclContext* ctx) override {
 		std::string varname = ctx->ID()->getText();
-		new_var(varname, t_int);
+		if (ctx->vartype()->T_INT()) new_var(varname, t_int);
+		else /* string type */		 new_var(varname, t_str);
 
 		return std::any();
 	}

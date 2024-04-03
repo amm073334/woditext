@@ -54,6 +54,8 @@ linestmt
     | lhs '*=' expr     # Assign
     | lhs '/=' expr     # Assign
     | lhs '%=' expr     # Assign
+    | lhs '=' STRING    # StringAssign
+    | lhs '+=' STRING   # StringAssign
     | BREAK             # Break
     | CONTINUE          # Continue
     | RETURN expr?      # Return
