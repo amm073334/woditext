@@ -50,26 +50,37 @@ private:
 	}
 
 	/**
-	* Declare a new integer variable, and insert it into the current scope.
+	* Declare a new variable, and insert it into the current scope.
 	* Errors if this would cause a redeclaration.
 	* @param name	Name of the variable.
+	* @param ty		Type of the variable.
 	* @return		A copy of the inserted VarSymbol.
 	*/
-	VarSymbol new_int_var(std::string name) {
-		int stackpos = int_stack.push_var();
+	VarSymbol new_var(std::string name, var_type ty) {
+		assert(ty != t_void);
+		int stackpos;
+		if (ty == t_int) stackpos = int_stack.push_var();
+		else /* t_str */ stackpos = str_stack.push_var();
+
 		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
 		current_event->cself_names.at(stackpos) = name;
-		VarSymbol sym = VarSymbol(name, yobidasi, t_int);
+		VarSymbol sym = VarSymbol(name, yobidasi, ty);
 		if (!st.insert(sym)) error("redeclaration of " + name);
 		return sym;
 	}
 
 	/**
 	* Get new temporary.
+	* @param ty	Type of the temporary.
 	* @return	WodNumber value of the temporary.
 	*/
-	WodNumber new_temp() {
-		int stackpos = int_stack.push_temp();
+	WodNumber new_temp(var_type ty) {
+		assert(ty != t_void);
+		
+		int stackpos;
+		if (ty == t_int) stackpos = int_stack.push_temp();
+		else /* t_str */ stackpos = str_stack.push_temp();
+
 		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
 		current_event->cself_names.at(stackpos) = "__t" + std::to_string(stackpos);
 		return WodNumber(yobidasi, true);
@@ -102,7 +113,7 @@ private:
 		try {
 			WodNumber result = std::any_cast<WodNumber>(ctx->accept(this));
 			if (result.should_suppress_yobidasi()) {
-				WodNumber t = new_temp();
+				WodNumber t = new_temp(t_int);
 				current_event->append(std::make_unique<ArithLine>(t, result.value, 0, ArithLine::af_yobanai1));
 				return t;
 			}
@@ -293,7 +304,7 @@ public:
 			std::string varname = ctx->lhs()->ID()->getText();
 			if (ctx->lhs()->vartype()) {
 				// if lhs has a variable type, statement is a declaration; create new variable
-				new_int_var(varname);
+				new_var(varname, t_int);
 			}
 			VarSymbol* dest_symbol = st.lookup_var(varname);
 			if (dest_symbol) {
@@ -378,7 +389,7 @@ public:
 		else if (ctx->dbaccess()->SDB())	db = DBLine::sdb;
 		else /* UDB */						db = DBLine::udb;
 
-		WodNumber tempvar = new_temp();
+		WodNumber tempvar = new_temp(t_int);
 		current_event->append(std::make_unique<DBLine>(
 			typenum.value, datanum.value, valuenum.value, 
 			db | DBLine::FLAG_ASSIGN_TO_VAR, 
@@ -419,7 +430,7 @@ public:
 			int_stack.restore_temp();
 
 			// insert line
-			WodNumber tempvar = new_temp();
+			WodNumber tempvar = new_temp(t_int);
 			current_event->append(std::make_unique<CallByNameLine>(name, int_args, str_args, tempvar.value));
 
 			return tempvar;
@@ -438,7 +449,7 @@ public:
 		WodNumber arg = eval_unsafe(ctx->expr());
 		int_stack.restore_temp();
 
-		WodNumber tempvar = new_temp();
+		WodNumber tempvar = new_temp(t_int);
 		current_event->append(std::make_unique<ArithLine>(
 				tempvar, 0, arg, ArithLine::assign_eq | ArithLine::op_minus));
 
@@ -460,7 +471,7 @@ public:
 		else if (ctx->OP_AMP())		op = ArithLine::op_bitand;
 		else error(ctx, "no matching op");
 
-		WodNumber tempvar = new_temp();
+		WodNumber tempvar = new_temp(t_int);
 		current_event->append(std::make_unique<ArithLine>(
 				tempvar, left, right, ArithLine::assign_eq | op));
 		
@@ -477,7 +488,7 @@ public:
 		headline->set_else_branch(true);
 
 		current_event->append(std::move(headline));
-		WodNumber tempvar = new_temp();
+		WodNumber tempvar = new_temp(t_int);
 
 		current_event->append(std::make_unique<BranchLine>(1));
 		current_event->append(std::make_unique<ArithLine>(
@@ -510,7 +521,7 @@ public:
 		headline->set_else_branch(true);
 
 		current_event->append(std::move(headline));
-		WodNumber tempvar = new_temp();
+		WodNumber tempvar = new_temp(t_int);
 		
 		current_event->append(std::make_unique<BranchLine>(1));
 		current_event->append(std::make_unique<ArithLine>(
@@ -526,7 +537,7 @@ public:
 
 	std::any visitDecl(woditextParser::DeclContext* ctx) override {
 		std::string varname = ctx->ID()->getText();
-		new_int_var(varname);
+		new_var(varname, t_int);
 
 		return std::any();
 	}

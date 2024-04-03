@@ -29,7 +29,7 @@ public:
         , lowest_temp_stackpos(temp_start)
         , saved_var_stackpos(var_start)
         , saved_temp_stackpos(temp_start)
-        {}
+    {}
     
     void save_var() { saved_var_stackpos = var_stackpos; }
     int push_var() {
