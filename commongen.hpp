@@ -58,6 +58,7 @@ private:
 	*/
 	VarSymbol new_var(std::string name, var_type ty) {
 		assert(ty != t_void);
+
 		int stackpos;
 		if (ty == t_int) stackpos = int_stack.push_var();
 		else /* t_str */ stackpos = str_stack.push_var();
@@ -167,6 +168,8 @@ public:
 				if (index < 0) error(ctx, "too many str parameters in common definition");
 				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_str));
 				param_types.push_back(t_str);
+				// for strings, param space is the same as variable space, so add new var here to reflect that
+				str_stack.push_var();
 			}
 			else {
 				error(ctx, "unexpected param type");
