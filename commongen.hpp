@@ -304,7 +304,9 @@ public:
 			std::string varname = ctx->lhs()->ID()->getText();
 			if (ctx->lhs()->vartype()) {
 				// if lhs has a variable type, statement is a declaration; create new variable
-				new_var(varname, t_int);
+				if (ctx->lhs()->vartype()->T_INT()) {
+					new_var(varname, t_int);
+				} else error(ctx, "cannot assign string literal to integer variable");
 			}
 			VarSymbol* dest_symbol = st.lookup_var(varname);
 			if (dest_symbol) {
@@ -328,6 +330,57 @@ public:
 			} else error(ctx, "undeclared variable '" + varname + "'");
 		}
 		
+		return std::any();
+	}
+
+	std::any visitStringAssign(woditextParser::StringAssignContext* ctx) override {
+
+		std::string original = ctx->STRING()->getText();
+		std::string dequoted = original.substr(1, original.size() - 2);
+		// assign to db
+		if (woditextParser::DbaccessContext* dbctx = ctx->lhs()->dbaccess()) {
+			WodNumber typenum = eval_safe(dbctx->expr(0));
+			if (!typenum.is_ref && typenum.value > 99) error(ctx, "attempted to reference DB typenum greater than 99");
+			WodNumber datanum = eval_safe(dbctx->expr(1));
+			WodNumber valuenum = eval_safe(dbctx->expr(2));
+
+			DBLine::db_type db;
+			if (dbctx->CDB())			db = DBLine::cdb;
+			else if (dbctx->SDB())		db = DBLine::sdb;
+			else /* UDB */				db = DBLine::udb;
+
+			DBLine::assign_type assign;
+			if (ctx->AS_EQ())  assign = DBLine::assign_eq;
+			else /* plus eq */ assign = DBLine::assign_plus_eq;
+
+			current_event->append(std::make_unique<DBLine>(
+				typenum.value, datanum.value, valuenum.value, assign, dequoted
+			));
+
+		}
+		// assign to variable
+		else {
+			std::string varname = ctx->lhs()->ID()->getText();
+			if (ctx->lhs()->vartype()) {
+				if (ctx->lhs()->vartype()->T_STR()) {
+					new_var(varname, t_str);
+				}
+				else error(ctx, "cannot assign integer literal to string variable");
+			}
+			VarSymbol* dest_symbol = st.lookup_var(varname);
+			if (dest_symbol) {
+				// get assignment type
+				StringLine::assign_type assign;
+				if (ctx->AS_EQ())  assign = StringLine::assign_eq;
+				else /* plus eq */ assign = StringLine::assign_plus_eq;
+
+				// assign to var
+				current_event->append(std::make_unique<StringLine>(
+					dest_symbol->yobidasi, assign, dequoted));
+			}
+			else error(ctx, "undeclared variable '" + varname + "'");
+		}
+
 		return std::any();
 	}
 

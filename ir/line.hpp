@@ -4,6 +4,8 @@
 #include <string>
 #include <variant>
 
+typedef std::variant<int32_t, std::string> num_or_str;
+
 /**
 * Wrapper for an int32_t to distinguish between normal integers and yobidasi hensuu.
 */
@@ -115,6 +117,66 @@ private:
     void update_base_data() override {
         int_fields = { dest, arg0, arg1, flags };
         str_fields = {};
+    }
+};
+
+class StringLine : public Line {
+public:
+    int32_t get_command_id() override { return 122; }
+
+
+    static const int32_t FLAG_COPY_STRVAR = 0x1;
+    static const int32_t FLAG_KB_INPUT = 0x3; // キーボード入力
+    static const int32_t FLAG_LOAD_FROM_REF = 0x2; // ロード位置を変数で指定
+
+    // only effective when FLAG_KB_INPUT is true
+    static const int32_t FLAG_KB_CANCELABLE = 0x1000;
+    static const int32_t FLAG_KB_INITIALIZE = 0x2000; // 左辺を書換
+
+    // 代入先を変数で指定
+    static const int32_t FLAG_DEST_IS_REF = 0x10;
+
+    enum assign_type {
+        assign_eq       = 0x0,
+        assign_plus_eq  = 0x100
+        // TODO: fancier assign types
+    };
+
+    StringLine(int32_t dest, int32_t flags, int32_t assign)
+        : dest(dest)
+        , flags(flags)
+        , int_arg(assign)
+    {}
+
+    StringLine(int32_t dest, int32_t flags, std::string assign)
+        : dest(dest)
+        , flags(flags)
+        , strlit(assign)
+    { int_arg = 0; }
+
+private:
+    int32_t dest;
+    int32_t flags;
+
+    // usage changes depending on flags
+        // if using string literal, it's just 0
+        // if copying string variable, it is the yobidasi hensuu of the variable
+        // if kb input, byte count
+        // if loading from arbitrary reference, it is also the yobidasi hensuu
+    int32_t int_arg;
+    
+    std::string strlit;
+
+    void update_base_data() override {
+        int_fields = { dest, flags, int_arg };
+        // if first four bytes are zero, this is string literal input
+        if ((flags & 0xf) == 0) {
+            str_fields = { strlit };
+        }
+        // otherwise, there are no string fields
+        else {
+            str_fields = {};
+        }
     }
 };
 
@@ -371,7 +433,6 @@ public:
         assign_high_bound   = 0x70
     };
 
-    typedef std::variant<int32_t, std::string> num_or_str;
     DBLine(num_or_str type, num_or_str data, num_or_str value, int32_t flags, num_or_str assign) : flags(flags) {
         if (const std::string* p = std::get_if<std::string>(&type)) {
             this->flags |= FLAG_STRING_TYPE;
@@ -416,6 +477,9 @@ private:
     int32_t data_num = 0;
     int32_t value_num = 0;
     int32_t flags = 0;
+
+    // can refer to either lhs or rhs, depending on flags
+    // in either case, refers to the number that _isn't_ the db access
     int32_t assign_num = 0;
 
     std::string type_str;

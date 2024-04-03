@@ -1,7 +1,9 @@
 // comment
 int test_func(int param, str string, int another) {
     str asdf;
-    str a;
+    str bsdf = "ab";
+
+    CDB[4][23][1] = "qjoiwfe";
 
     int a = test_func(2 + param, 1600005, 1600005);
     test_func(1, 2, 3);

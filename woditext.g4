@@ -133,7 +133,7 @@ T_VOID: 'void' | 'ボイド';
 
 ID: [_\p{Alpha}\p{General_Category=Other_Letter}][_\p{Alnum}\p{General_Category=Other_Letter}]*;
 
-STRING: '"' [^"]* '"';
+STRING: '"' ~["]* '"';
 
 COMMENT: '//' ~[\r\n]* -> skip;
 
