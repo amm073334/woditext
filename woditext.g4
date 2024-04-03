@@ -83,7 +83,6 @@ expr
     | ID                                    # IdExpr
     | NUM                                   # NumLit
     | (TRUE | FALSE)                        # BoolLit
-    | STRING                                # StringLit
     ;
 
 
