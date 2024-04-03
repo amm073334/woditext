@@ -28,18 +28,8 @@ private:
 	CommonEvent* current_event = nullptr;
 	var_type curr_return_type = t_void;
 
-	int int_var_stackpos = INT_VAR_STACK_START;
-	int highest_int_var_stackpos = INT_VAR_STACK_START;
-	int int_temp_stackpos = INT_TEMP_STACK_START;
-	int int_lowest_temp_stackpos = INT_TEMP_STACK_START;
-	
-	int str_var_stackpos = STR_VAR_STACK_START;
-	int str_highest_var_stackpos = STR_VAR_STACK_START;
-	int str_temp_stackpos = STR_TEMP_STACK_START;
-	int str_lowest_temp_stackpos = STR_TEMP_STACK_START;
-
-	DoubleStack int_stack;
-	DoubleStack str_stack;
+	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
+	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
 	
 	SymbolTable st;
 
@@ -66,15 +56,11 @@ private:
 	* @return		A copy of the inserted VarSymbol.
 	*/
 	VarSymbol new_int_var(std::string name) {
-		if (highest_int_var_stackpos >= int_lowest_temp_stackpos) {
-			error("no more space for variables");
-		}
-		int32_t yobidasi = CSELF_YOBIDASI + int_var_stackpos;
-		current_event->cself_names.at(int_var_stackpos) = name;
+		int stackpos = int_stack.push_var();
+		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
+		current_event->cself_names.at(stackpos) = name;
 		VarSymbol sym = VarSymbol(name, yobidasi, t_int);
 		if (!st.insert(sym)) error("redeclaration of " + name);
-		int_var_stackpos++;
-		highest_int_var_stackpos = std::max(int_var_stackpos, highest_int_var_stackpos);
 		return sym;
 	}
 
@@ -83,13 +69,9 @@ private:
 	* @return	WodNumber value of the temporary.
 	*/
 	WodNumber new_temp() {
-		if (highest_int_var_stackpos >= int_lowest_temp_stackpos) {
-			error("no more space for temp variables");
-		}
-		int32_t yobidasi = CSELF_YOBIDASI + int_temp_stackpos;
-		current_event->cself_names.at(int_temp_stackpos) = "__t" + std::to_string(int_temp_stackpos);
-		int_temp_stackpos--;
-		int_lowest_temp_stackpos = std::min(int_temp_stackpos, int_lowest_temp_stackpos);
+		int stackpos = int_stack.push_temp();
+		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
+		current_event->cself_names.at(stackpos) = "__t" + std::to_string(stackpos);
 		return WodNumber(yobidasi, true);
 	}
 
@@ -137,13 +119,8 @@ public:
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 		// reset state
-		int_var_stackpos = INT_VAR_STACK_START;
-		int_temp_stackpos = INT_TEMP_STACK_START;
-		int_lowest_temp_stackpos = INT_TEMP_STACK_START;
-
 		int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
 		str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
-
 
 		// make new commonevent
 		current_event = cf.add_common(std::make_unique<CommonEvent>());
@@ -202,9 +179,9 @@ public:
 
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
 		if (ctx->expr()) {
-			int saved_temp_pos = int_temp_stackpos;
+			int_stack.save_temp();
 			WodNumber rhs = eval_unsafe(ctx->expr());
-			int_temp_stackpos = saved_temp_pos;
+			int_stack.restore_temp();
 
 			// assign to var
 			current_event->append(std::make_unique<ArithLine>(
@@ -216,9 +193,9 @@ public:
 	}
 
 	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
-		int saved_temp_pos = int_temp_stackpos;
+		int_stack.save_temp();
 		WodNumber condition = eval_unsafe(ctx->expr());
-		int_temp_stackpos = saved_temp_pos;
+		int_stack.restore_temp();
 
 		std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(condition, 0, IntIfHeadLine::op_neq);
 		if (ctx->stmt(1)) headline->set_else_branch(true);
@@ -255,10 +232,10 @@ public:
 	}
 
 	std::any visitCountLoop(woditextParser::CountLoopContext* ctx) override {
-		int saved_temp_pos = int_temp_stackpos;
+		int_stack.save_temp();
 		// this command does not support disabling variable references; do safe eval
 		WodNumber arg = eval_safe(ctx->expr());
-		int_temp_stackpos = saved_temp_pos;
+		int_stack.restore_temp();
 
 		current_event->append(std::make_unique<LoopCountHeadLine>(arg.value));
 		st.open_scope();
@@ -302,9 +279,9 @@ public:
 			else /* mod eq */		assign = DBLine::assign_mod_eq;
 
 			// eval assignment expr
-			int saved_temp_pos = int_temp_stackpos;
+			int_stack.save_temp();
 			WodNumber rhs = eval_safe(ctx->expr());
-			int_temp_stackpos = saved_temp_pos;
+			int_stack.restore_temp();
 
 			current_event->append(std::make_unique<DBLine>(
 				typenum.value, datanum.value, valuenum.value, assign, rhs.value
@@ -330,9 +307,9 @@ public:
 				else /* mod eq */		assign = ArithLine::assign_mod_eq;
 
 				// eval
-				int saved_temp_pos = int_temp_stackpos;
+				int_stack.save_temp();
 				WodNumber rhs = eval_unsafe(ctx->expr());
-				int_temp_stackpos = saved_temp_pos;
+				int_stack.restore_temp();
 
 				// assign to var
 				current_event->append(std::make_unique<ArithLine>(
@@ -352,7 +329,7 @@ public:
 			int numargs = ctx->expr().size();
 			if (numargs != symbol->params.size()) error(ctx, "wrong number of params in call");
 
-			int saved_stack_pos = int_temp_stackpos;
+			int_stack.save_temp();
 			// eval args
 			std::vector<int32_t> int_args;
 			std::vector<int32_t> str_args;
@@ -365,7 +342,7 @@ public:
 				}
 				else error(ctx, "no such basetype");
 			}
-			int_temp_stackpos = saved_stack_pos;
+			int_stack.restore_temp();
 
 			// insert line
 			current_event->append(std::make_unique<CallByNameLine>(name, int_args, str_args));
@@ -427,7 +404,7 @@ public:
 			int numargs = ctx->expr().size();
 			if (numargs != symbol->params.size()) error(ctx, "wrong number of params in call");
 			
-			int saved_stack_pos = int_temp_stackpos;
+			int_stack.save_temp();
 			// eval args
 			std::vector<int32_t> int_args;
 			std::vector<int32_t> str_args;
@@ -439,7 +416,7 @@ public:
 					str_args.push_back(eval_safe(ctx->expr(i)).value);
 				} else error(ctx, "no such basetype");
 			}
-			int_temp_stackpos = saved_stack_pos;
+			int_stack.restore_temp();
 
 			// insert line
 			WodNumber tempvar = new_temp();
@@ -457,9 +434,9 @@ public:
 	}
 	
 	std::any visitUnaryMinusExpr(woditextParser::UnaryMinusExprContext* ctx) override {
-		int saved_temp_pos = int_temp_stackpos;
+		int_stack.save_temp();
 		WodNumber arg = eval_unsafe(ctx->expr());
-		int_temp_stackpos = saved_temp_pos;
+		int_stack.restore_temp();
 
 		WodNumber tempvar = new_temp();
 		current_event->append(std::make_unique<ArithLine>(
@@ -469,10 +446,10 @@ public:
 	}
 	
 	std::any visitBinopExpr(woditextParser::BinopExprContext* ctx) override {
-		int saved_temp_pos = int_temp_stackpos;
+		int_stack.save_temp();
 		WodNumber left = eval_unsafe(ctx->expr(0));
 		WodNumber right = eval_unsafe(ctx->expr(1));
-		int_temp_stackpos = saved_temp_pos;
+		int_stack.restore_temp();
 
 		ArithLine::arith_op op = ArithLine::op_plus;
 		if		(ctx->OP_PLUS())	op = ArithLine::op_plus;
@@ -491,9 +468,9 @@ public:
 	}
 	
 	std::any visitLogicalNotExpr(woditextParser::LogicalNotExprContext* ctx) override {
-		int saved_temp_pos = int_temp_stackpos;
+		int_stack.save_temp();
 		WodNumber arg = eval_unsafe(ctx->expr());
-		int_temp_stackpos = saved_temp_pos;
+		int_stack.restore_temp();
 
 
 		std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(arg, 0, IntIfHeadLine::op_neq);
@@ -515,10 +492,10 @@ public:
 	}
 
 	std::any visitBinopRelExpr(woditextParser::BinopRelExprContext* ctx) override {
-		int saved_temp_pos = int_temp_stackpos;
+		int_stack.save_temp();
 		WodNumber left = eval_unsafe(ctx->expr(0));
 		WodNumber right = eval_unsafe(ctx->expr(1));
-		int_temp_stackpos = saved_temp_pos;
+		int_stack.restore_temp();
 
 		IntIfHeadLine::comp_op op = IntIfHeadLine::op_gt;
 		if (ctx->OP_LT()) op = IntIfHeadLine::op_lt;
