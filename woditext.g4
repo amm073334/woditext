@@ -96,7 +96,7 @@ expr
     | expr ('*' | '/' | '%') expr           # BinopExpr
     | expr ('+' | '-') expr                 # BinopExpr
     | expr ('<' | '<=' | '>' | '>=') expr   # BinopRelExpr
-    | expr ('==' | '!=') expr               # BinopRelExpr
+    | expr ('==' | '!=') expr               # BinopRelEqExpr
     | expr ('&') expr                       # BinopExpr
     | '(' expr ')'                          # ParenExpr
     | var                                   # VarExpr

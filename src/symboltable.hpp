@@ -27,13 +27,13 @@ struct VarSymbol {
 };
 
 struct CommonSymbol {
-	CommonSymbol(CommonEvent* cev) : cev(cev) {}
+	CommonSymbol(std::string name) : name(name) {}
 
 	// DEPRECATE
 	CommonSymbol(std::string name, wod_type return_type, std::vector<wod_type> params)
 		: name(name), return_type(return_type), params(params) {}
 
-	std::string name; // DEPRECATE
+	std::string name;
 	wod_type return_type = t_void;
 	std::vector<wod_type> params;
 	CommonEvent* cev = nullptr;

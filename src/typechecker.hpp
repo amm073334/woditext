@@ -18,16 +18,13 @@ private:
 	static const int STR_VAR_STACK_START = 5;
 	static const int STR_TEMP_STACK_START = 8;
 
-	static const int INT_RETURN_INDEX = 99;
-	static const int STR_RETURN_INDEX = 9;
-
 	static const int MAX_PARAM_COUNT = 5;
 
 	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
-	CommonFile* cf;
     SymbolTable* st;
+	wod_type current_return_type = t_void;
 
 	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
 	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
@@ -40,8 +37,18 @@ private:
 		exit(1);
 	}
 	
+	bool may_be_int(wod_type wt) {
+		if (wt == t_int || wt == t_dbunknown) return true;
+		else return false;
+	}
+
+	bool may_be_str(wod_type wt) {
+		if (wt == t_str || wt == t_dbunknown) return true;
+		else return false;
+	}
+
 public:
-    TypeChecker(CommonFile* cf, SymbolTable* st) : cf(cf), st(st) {}
+    TypeChecker(SymbolTable* st) : st(st) {}
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 		// reset state
@@ -49,13 +56,14 @@ public:
 		str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
 
 		// make new commonevent
-		CommonSymbol csym(cf->add_common(std::make_unique<CommonEvent>()));
+		CommonSymbol csym(ctx->ID()->getText());
 
 		// handle return type
-		if (ctx->returntype()->T_VOID()) csym.return_type = t_void;
-		else if (ctx->returntype()->T_INT()) csym.return_type = t_int;
-		else if (ctx->returntype()->T_STR()) csym.return_type = t_str;
+		if (ctx->returntype()->T_VOID()) current_return_type = t_void;
+		else if (ctx->returntype()->T_INT()) current_return_type = t_int;
+		else if (ctx->returntype()->T_STR()) current_return_type = t_str;
 		else error(ctx, "unknown return type");
+		csym.return_type = current_return_type;
 
 		// handle params
 		int num_int_params = 0;
@@ -84,7 +92,6 @@ public:
 				error(ctx, "unexpected param type");
 			}
 		}
-
 		csym.params = param_types;
 
 		// make common event symbol
@@ -101,18 +108,18 @@ public:
 	std::any visitDecl(woditextParser::DeclContext* ctx) override {
 
 		std::string varname = ctx->ID()->getText();
-		wod_type vt;
-		if (ctx->vartype()->T_INT()) vt = t_int;
-		else /* string */ vt = t_str;
+		wod_type wt;
+		if (ctx->vartype()->T_INT()) wt = t_int;
+		else /* string */ wt = t_str;
 
 		int stackpos;
-		if (vt == t_int) stackpos = int_stack.push_var();
+		if (wt == t_int) stackpos = int_stack.push_var();
 		else /* string */ stackpos = str_stack.push_var();
 
-		VarSymbol sym = VarSymbol(CSELF_YOBIDASI + stackpos, stackpos, vt);
+		VarSymbol sym = VarSymbol(CSELF_YOBIDASI + stackpos, stackpos, wt);
 		if (!st->insert(sym)) error(ctx, "duplicate declaration of " + varname);
 
-		return std::any();
+		return wt;
 	}
 
 	std::any visitVar(woditextParser::VarContext* ctx) override {
@@ -135,18 +142,29 @@ public:
 		std::vector<int32_t> int_args;
 		std::vector<num_or_str> str_args;
 		for (int i = 0; i < numargs; i++) {
+			wod_type arg_type = std::any_cast<wod_type>(ctx->expr_or_str(i)->accept(this));
 			if (sym->params.at(i) == t_int) {
-				if (ctx->expr_or_str(i)->STRING())
-					error(ctx, "tried to pass string literal into integer arg");
+				if (!may_be_int(arg_type))
+					error(ctx, "call argument type mismatch");
 			}
 			else if (sym->params.at(i) == t_str) {
-				if (ctx->expr_or_str(i)->expr())
-					error(ctx, "tried to pass integer into string arg");
+				if (!may_be_str(arg_type))
+					error(ctx, "call argument type mismatch");
 			}
+			// parameter should not be anything other than int or str
 			else error(ctx, "unexpected parameter type");
 		}
 
 		return sym->return_type;
+	}
+
+	std::any visitExpr_or_str(woditextParser::Expr_or_strContext* ctx) override {
+		if (ctx->expr()) return ctx->expr()->accept(this);
+		else if (ctx->STRING()) return t_str;
+		else {
+			error(ctx, "unexpected rule");
+			return t_error;
+		}
 	}
 
 	std::any visitDbaccess(woditextParser::DbaccessContext* ctx) override {
@@ -168,4 +186,109 @@ public:
 		// as the compiler doesn't know the DB layout, it doesn't know the type of the db access
 		return t_dbunknown;
 	}
+
+	std::any visitNumLit(woditextParser::NumLitContext* ctx) override {
+		return t_int;
+	}
+
+	std::any visitBoolLit(woditextParser::BoolLitContext* ctx) override {
+		return t_int; // represent everything numeric as ints
+	}
+
+	std::any visitUnaryMinusExpr(woditextParser::UnaryMinusExprContext* ctx) override {
+		wod_type expr_type = std::any_cast<wod_type>(ctx->expr()->accept(this));
+		if (may_be_int(expr_type)) return t_int;
+		else {
+			error(ctx, "tried to negate non-integer value");
+			return t_error;
+		}
+	}
+
+	std::any visitLogicalNotExpr(woditextParser::LogicalNotExprContext* ctx) override {
+		wod_type expr_type = std::any_cast<wod_type>(ctx->expr()->accept(this));
+		if (may_be_int(expr_type)) return t_int;
+		else {
+			error(ctx, "tried to (logical) negate non-integer value");
+			return t_error;
+		}
+	}
+
+	std::any visitBinopExpr(woditextParser::BinopExprContext* ctx) override {
+		wod_type expr1_type = std::any_cast<wod_type>(ctx->expr(0)->accept(this));
+		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
+		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
+			return t_int;
+		}
+		else {
+			error(ctx, "binary expression with non-integer types");
+			return t_error;
+		}
+	}
+
+	std::any visitBinopRelExpr(woditextParser::BinopRelExprContext* ctx) override {
+		wod_type expr1_type = std::any_cast<wod_type>(ctx->expr(0)->accept(this));
+		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
+		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
+			return t_int;
+		}
+		else {
+			error(ctx, "binary expression with non-integer types");
+			return t_error;
+		}
+	}
+
+	std::any visitBinopRelEqExpr(woditextParser::BinopRelEqExprContext* ctx) override {
+		wod_type expr1_type = std::any_cast<wod_type>(ctx->expr(0)->accept(this));
+		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
+		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
+			return t_int;
+		}
+		else if (may_be_str(expr1_type) && may_be_str(expr2_type)) {
+			return t_str;
+		}
+		else {
+			error(ctx, "equality comparison with mismatched types");
+			return t_error;
+		}
+	}
+
+	std::any visitAssign(woditextParser::AssignContext* ctx) override {
+		wod_type lhs_type = std::any_cast<wod_type>(ctx->lhs()->accept(this));
+		wod_type expr_type = std::any_cast<wod_type>(ctx->expr()->accept(this));
+		if (may_be_int(lhs_type) && may_be_int(expr_type)) {
+			return t_void; // assignment expression has no type
+		}
+		else if (may_be_str(lhs_type) && may_be_str(expr_type)) {
+			return t_void;
+		}
+		else {
+			error(ctx, "assignment with mismatched types");
+			return t_error;
+		}
+	}
+
+	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
+		// if return is empty, then function should return void
+		if (!ctx->expr()) {
+			if (current_return_type == t_void) return t_void;
+			else {
+				error(ctx, "returned non-void in void-returning common");
+				return t_error;
+			}
+		}
+
+		// otherwise, compare return type with expr type
+		wod_type expr_type = std::any_cast<wod_type>(ctx->expr()->accept(this));
+		if (current_return_type == t_int && may_be_int(expr_type)) {
+			return t_void; // return expression has no type
+		}
+		else if (current_return_type == t_str && may_be_str(expr_type)) {
+			return t_void;
+		}
+		else {
+			error(ctx, "type of returned value is different from common event return type");
+			return t_error;
+		}
+	}
+
 };
