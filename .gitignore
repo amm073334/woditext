@@ -2,7 +2,7 @@
 .vscode/
 build/
 javatemp/
-lib/
+parser/
 *.vcxproj
 *.vcxproj.filters
 *.sln
