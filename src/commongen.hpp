@@ -510,7 +510,7 @@ public:
 	std::any visitNumLit(woditextParser::NumLitContext* ctx) override {
 		std::string text = ctx->NUM()->getText();
 		try {
-			return WodNumber(static_cast<int32_t>(stoi(text, 0)));
+			return WodNumber(static_cast<int32_t>(stoi(text, nullptr, 0)));
 		}
 		catch (const std::out_of_range&) {
 			error(ctx, "integer literal " + text + " is too large to fit in a signed 32-bit integer");

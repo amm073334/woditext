@@ -1,5 +1,10 @@
 // comment
 int test_func(int param, str string, int another) {
+    int adfjlk = 55;
+    adfjlk = 055;
+    adfjlk = 0x55;
+    adfjlk = -0X55;
+    adfjlk = 0XaF;
     str asdf;
     str bsdf = "ab";
     asdf = "hello world";
