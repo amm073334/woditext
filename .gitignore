@@ -1,7 +1,6 @@
 .antlr/
 .vscode/
 build/
-javatemp/
 parser/
 *.vcxproj
 *.vcxproj.filters
