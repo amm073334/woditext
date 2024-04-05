@@ -46,7 +46,7 @@ stmt
     ;
 
 linestmt
-    : vartype ID        # Decl
+    : decl              # DeclStmt
     | call              # CallStmt
     | lhs '=' expr      # Assign
     | lhs '+=' expr     # Assign
@@ -63,9 +63,17 @@ linestmt
     ;
 
 lhs
+    : decl              # DeclLhs
+    | var               # VarLhs
+    | dbaccess          # DbLhs
+    ;
+
+var
+    : ID
+    ;
+
+decl
     : vartype ID
-    | ID
-    | dbaccess
     ;
 
 dbaccess
@@ -91,7 +99,7 @@ expr
     | expr ('==' | '!=') expr               # BinopRelExpr
     | expr ('&') expr                       # BinopExpr
     | '(' expr ')'                          # ParenExpr
-    | ID                                    # IdExpr
+    | var                                   # VarExpr
     | NUM                                   # NumLit
     | (TRUE | FALSE)                        # BoolLit
     ;

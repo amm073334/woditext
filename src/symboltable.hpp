@@ -1,8 +1,11 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+#include "commonevent.hpp"
 
-enum var_type {
+enum wod_type {
+	t_error,
+	t_dbunknown,
 	t_void,
 	t_int,
 	t_str
@@ -12,19 +15,28 @@ enum var_type {
 * Symbols: Since common events are always globally scoped, hold their symbols in a separate table.
 */
 struct VarSymbol {
-	VarSymbol(std::string name, int32_t yobidasi, var_type type)
+	VarSymbol(std::string name, int32_t yobidasi, wod_type type)
 		: name(name), yobidasi(yobidasi), type(type) {}
-	std::string name;
+
+	VarSymbol(int32_t yobidasi, int32_t cself_index, wod_type type)
+		: yobidasi(yobidasi), cself_index(cself_index), type(type) {}
+	std::string name; // DEPRECATE
 	int32_t yobidasi;
-	var_type type;
+	int32_t cself_index;
+	wod_type type;
 };
 
 struct CommonSymbol {
-	CommonSymbol(std::string name, var_type return_type, std::vector<var_type> params)
+	CommonSymbol(CommonEvent* cev) : cev(cev) {}
+
+	// DEPRECATE
+	CommonSymbol(std::string name, wod_type return_type, std::vector<wod_type> params)
 		: name(name), return_type(return_type), params(params) {}
-	std::string name;
-	var_type return_type;
-	std::vector<var_type> params;
+
+	std::string name; // DEPRECATE
+	wod_type return_type = t_void;
+	std::vector<wod_type> params;
+	CommonEvent* cev = nullptr;
 };
 
 /**

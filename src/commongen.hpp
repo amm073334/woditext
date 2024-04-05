@@ -26,7 +26,7 @@ private:
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
 	CommonEvent* current_event = nullptr;
-	var_type curr_return_type = t_void;
+	wod_type curr_return_type = t_void;
 
 	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
 	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
@@ -56,7 +56,7 @@ private:
 	* @param ty		Type of the variable.
 	* @return		A copy of the inserted VarSymbol.
 	*/
-	VarSymbol new_var(std::string name, var_type ty) {
+	VarSymbol new_var(std::string name, wod_type ty) {
 		assert(ty != t_void);
 
 		int stackpos;
@@ -75,7 +75,7 @@ private:
 	* @param ty	Type of the temporary.
 	* @return	WodNumber value of the temporary.
 	*/
-	WodNumber new_temp(var_type ty) {
+	WodNumber new_temp(wod_type ty) {
 		assert(ty != t_void);
 		
 		int stackpos;
@@ -201,7 +201,7 @@ public:
 		else error(ctx, "unknown return type");
 		
 		// handle params
-		std::vector<var_type> param_types;
+		std::vector<wod_type> param_types;
 		std::vector<woditextParser::ParamContext*> params = ctx->param();
 		for (auto iter = params.begin(); iter != params.end(); iter++) {
 			std::string name = (*iter)->ID()->getText();
