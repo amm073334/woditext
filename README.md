@@ -1,4 +1,5 @@
 simple dsl to wrap around wolf rpg editor for text-based commonevent editing
+see https://github.com/amm073334/woditext-extension for simple vscode syntax highlighting
 
 uses c-style syntax:
 
