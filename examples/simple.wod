@@ -10,6 +10,11 @@ int test_func(int param, str string, int another) {
     asdf = "hello world";
     asdf = bsdf;
 
+    {
+        adfjlk = 1;
+        int adfjlk = 2;
+    }
+
     CDB[4]["test"][1] = bsdf;
 
     int a = test_func(2 + param, 1600005, 1600005);

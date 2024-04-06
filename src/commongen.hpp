@@ -228,14 +228,19 @@ public:
 		st.insert(CommonSymbol(ctx->ID()->getText(), curr_return_type, param_types));
 
 		// visit code
-		st.open_scope();
 		ctx->codeblock()->accept(this);
-		st.close_scope();
 
 		// if a common is completely blank, the engine will determine commonevent.dat as corrupted
 		// append an empty line at the end of the common to alleviate this
 		current_event->append(std::make_unique<EmptyLine>());
 
+		return std::any();
+	}
+
+	std::any visitCodeblock(woditextParser::CodeblockContext* ctx) override {
+		st.open_scope();
+		visitChildren(ctx);
+		st.close_scope();
 		return std::any();
 	}
 
