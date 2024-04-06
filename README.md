@@ -45,5 +45,15 @@ int func (int a, str b, int c) {
 
 void func2() {
   int a = func(1, "asdf", 2); // function call
+
+  // 日本語もある程度使えます
+  整数 変数1 = 1234;
+  文字列 も2 = "あ";
+  ループ (3) {
+    変数1 += 1;
+    ループ開始へ;
+    ループ中断;
+  }
+  
 }
 ```
