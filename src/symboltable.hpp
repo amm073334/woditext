@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include "commonevent.hpp"
 
 enum wod_type {
 	t_error,
