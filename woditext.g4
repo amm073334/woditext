@@ -55,21 +55,17 @@ linestmt
     | lhs '/=' expr     # Assign
     | lhs '%=' expr     # Assign
     | lhs '=' STRING    # StringAssign
-    | lhs '+=' STRING   # StringAssign
+    | lhs '+=' STRING    # StringAssign
     | BREAK             # Break
     | CONTINUE          # Continue
     | RETURN expr?      # Return
-    | RETURN STRING     # StringReturn
+    | RETURN STRING      # StringReturn
     ;
 
 lhs
-    : decl              # DeclLhs
-    | var               # VarLhs
-    | dbaccess          # DbLhs
-    ;
-
-var
-    : ID
+    : decl              
+    | ID               
+    | dbaccess          
     ;
 
 decl
@@ -96,10 +92,10 @@ expr
     | expr ('*' | '/' | '%') expr           # BinopExpr
     | expr ('+' | '-') expr                 # BinopExpr
     | expr ('<' | '<=' | '>' | '>=') expr   # BinopRelExpr
-    | expr ('==' | '!=') expr               # BinopRelEqExpr
+    | expr ('==' | '!=') expr               # BinopRelExpr
     | expr ('&') expr                       # BinopExpr
     | '(' expr ')'                          # ParenExpr
-    | var                                   # VarExpr
+    | ID                                    # IdExpr
     | NUM                                   # NumLit
     | (TRUE | FALSE)                        # BoolLit
     ;

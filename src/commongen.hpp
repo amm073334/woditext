@@ -14,19 +14,20 @@
 
 class CommonGen : public woditextBaseVisitor {
 private:
+	typedef std::pair<WodNumber, wod_type> expr_return_type;
+
 	static const int INT_VAR_STACK_START = 10;
 	static const int INT_TEMP_STACK_START = 98;
-	static const int INT_RETURN_INDEX = 99;
-
 	static const int STR_VAR_STACK_START = 5;
 	static const int STR_TEMP_STACK_START = 8;
+	
+	static const int INT_RETURN_INDEX = 99;
 	static const int STR_RETURN_INDEX = 9;
 
 	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
 	CommonEvent* current_event = nullptr;
-	wod_type curr_return_type = t_void;
 
 	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
 	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
@@ -47,6 +48,34 @@ private:
 			<< "ERROR:  " << message << std::endl
 			<< "common: " << current_event->name << std::endl;
 		exit(1);
+	}
+
+	/**
+	* Struct for passing around information while visiting the tree.
+	* Stores a WodNumber, type, and a string literal.
+	*/
+	struct ret {
+		ret() : exists(false), wn(0), wt(t_error) {}
+		ret(WodNumber wn, wod_type wt, std::string str) : exists(true), wn(wn), str(str) {}
+		bool exists;
+		WodNumber wn;
+		wod_type wt;
+		std::string str;
+	};
+
+	/**
+	* Functions for figuring out whether or not a type *might* be a given type.
+	* This is needed because the compiler has no information about the user's DB settings;
+	* therefore, whenever DB access is done, it's unknown whether the retrieved value is
+	* an int or a string.
+	*/
+	bool may_be_int(wod_type wt) {
+		if (wt == t_int || wt == t_dbunknown) return true;
+		else return false;
+	}
+	bool may_be_str(wod_type wt) {
+		if (wt == t_str || wt == t_dbunknown) return true;
+		else return false;
 	}
 
 	/**
@@ -185,17 +214,21 @@ public:
 		// make new commonevent
 		current_event = cf.add_common(std::make_unique<CommonEvent>());
 
+		std::string common_name = ctx->ID()->getText();
+		CommonSymbol csym(common_name);
+
+
 		// handle return type
-		current_event->name = ctx->ID()->getText();
+		current_event->name = common_name;
 		if (ctx->returntype()->T_VOID()) {
-			curr_return_type = t_void;
+			csym.return_type = t_void;
 		}
 		else if (ctx->returntype()->T_INT()) {
-			curr_return_type = t_int;
+			csym.return_type = t_int;
 			current_event->return_cself_id = INT_RETURN_INDEX;
 		}
 		else if (ctx->returntype()->T_STR()) {
-			curr_return_type = t_str;
+			csym.return_type = t_str;
 			current_event->return_cself_id = STR_RETURN_INDEX;
 		}
 		else error(ctx, "unknown return type");
@@ -223,38 +256,66 @@ public:
 				error(ctx, "unexpected param type");
 			}
 		}
+		csym.params = param_types;
 
-		// make common event symbol
-		st.insert(CommonSymbol(ctx->ID()->getText(), curr_return_type, param_types));
+		// insert into common table
+		st.insert(csym);
 
 		// visit code
-		st.open_scope();
-		ctx->codeblock()->accept(this);
-		st.close_scope();
+		bool has_code = std::any_cast<bool>(ctx->codeblock()->accept(this));
 
 		// if a common is completely blank, the engine will determine commonevent.dat as corrupted
 		// append an empty line at the end of the common to alleviate this
-		current_event->append(std::make_unique<EmptyLine>());
+		if (!has_code) current_event->append(std::make_unique<EmptyLine>());
 
 		return std::any();
 	}
 
+	std::any visitCodeblock(woditextParser::CodeblockContext* ctx) override {
+		st.open_scope();
+		visitChildren(ctx);
+		st.close_scope();
+
+		if (!ctx->stmt(0)) return false;
+		else return true;
+	}
+
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
-		
-		if (ctx->expr()) {
-			// eval
+		wod_type curr_return_type = st.lookup_common(current_event->name)->return_type;
+		ret ex = std::any_cast<ret>(ctx->expr()->accept(this));
+
+		// if return is empty, then function should return void
+		if (!ex.exists) {
+			if (curr_return_type == t_void) {
+				current_event->append(std::make_unique<ReturnLine>());
+				return std::any();
+			}
+			else {
+				error(ctx, "returned non-void in void-returning common");
+				return std::any();
+			}
+		}
+
+		// otherwise, compare return type with expr type
+		if (curr_return_type == t_int && may_be_int(ex.wt)) {
+			// integer
 			int_stack.save_temp();
 			WodNumber rhs = eval_unsafe(ctx->expr());
 			int_stack.restore_temp();
-			if (curr_return_type == t_int) {
-				// assign to var
-				current_event->append(std::make_unique<ArithLine>(
-					CSELF_YOBIDASI + INT_RETURN_INDEX, rhs, 0, 0));
-			}
-			else /* string type destination */ {
-				current_event->append(std::make_unique<StringLine>(
-					CSELF_YOBIDASI + STR_RETURN_INDEX, StringLine::FLAG_COPY_STRVAR, rhs.value));
-			}
+			current_event->append(std::make_unique<ArithLine>(
+				CSELF_YOBIDASI + INT_RETURN_INDEX, rhs, 0, 0));
+		}
+		else if (curr_return_type == t_str && may_be_str(ex.wt)) {
+			// string
+			int_stack.save_temp();
+			WodNumber rhs = eval_unsafe(ctx->expr());
+			int_stack.restore_temp();
+			current_event->append(std::make_unique<StringLine>(
+				CSELF_YOBIDASI + STR_RETURN_INDEX, StringLine::FLAG_COPY_STRVAR, rhs.value));
+		}
+		else {
+			error(ctx, "type of returned value is different from common event return type");
+			return std::any();
 		}
 		current_event->append(std::make_unique<ReturnLine>());
 
@@ -262,11 +323,13 @@ public:
 	}
 
 	std::any visitStringReturn(woditextParser::StringReturnContext* ctx) override {
-		std::string dequoted = trim(ctx->STRING()->getText());
-		
-		// assign to var
+		wod_type curr_return_type = st.lookup_common(current_event->name)->return_type;
+		if (curr_return_type != t_str) {
+			error(ctx, "type of returned value is different from common event return type");
+			return std::any();
+		}
 		current_event->append(std::make_unique<StringLine>(
-			CSELF_YOBIDASI + STR_RETURN_INDEX, 0, dequoted));
+			CSELF_YOBIDASI + STR_RETURN_INDEX, StringLine::FLAG_COPY_STRVAR, ctx->STRING()));
 		current_event->append(std::make_unique<ReturnLine>());
 		return std::any();
 	}
@@ -366,15 +429,15 @@ public:
 		} 
 		// assign to variable
 		else {
-			std::string varname = ctx->lhs()->ID()->getText();
-			if (ctx->lhs()->vartype()) {
-				// if lhs has a variable type, statement is a declaration; create new variable
-				if (ctx->lhs()->vartype()->T_INT()) {
-					new_var(varname, t_int);
-				} else {
-					new_var(varname, t_str);
-				}
+			std::string varname; 
+			if (ctx->lhs()->decl()) {
+				varname = ctx->lhs()->decl()->ID()->getText();
+				ctx->lhs()->decl()->accept(this);
 			}
+			else {
+				varname = ctx->lhs()->ID()->getText();
+			}
+
 			VarSymbol* dest_symbol = st.lookup_var(varname);
 			if (!dest_symbol) {
 				error(ctx, "undeclared variable '" + varname + "'");
@@ -450,8 +513,8 @@ public:
 		// assign to variable
 		else {
 			std::string varname = ctx->lhs()->ID()->getText();
-			if (ctx->lhs()->vartype()) {
-				if (ctx->lhs()->vartype()->T_STR()) {
+			if (ctx->lhs()->decl()) {
+				if (ctx->lhs()->decl()->vartype()->T_STR()) {
 					new_var(varname, t_str);
 				}
 				else error(ctx, "cannot assign integer literal to string variable");
@@ -488,7 +551,8 @@ public:
 			std::vector<num_or_str> str_args;
 			for (int i = 0; i < numargs; i++) {
 				if (symbol->params.at(i) == t_int) {
-					if (ctx->call()->expr_or_str(i)->STRING()) error(ctx, "tried to pass string literal into integer arg");
+					if (ctx->call()->expr_or_str(i)->STRING())
+						error(ctx, "tried to pass string literal into integer arg");
 					int_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 				}
 				else if (symbol->params.at(i) == t_str) {

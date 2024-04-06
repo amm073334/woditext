@@ -122,12 +122,12 @@ public:
 		return wt;
 	}
 
-	std::any visitVar(woditextParser::VarContext* ctx) override {
+	/*std::any visitVar(woditextParser::VarContext* ctx) override {
 		VarSymbol* sym = st->lookup_var(ctx->ID()->getText());
 		if (!sym) { error(ctx, "undefined variable"); return t_error; }
 
 		return sym->type;
-	}
+	}*/
 
 	std::any visitCall(woditextParser::CallContext* ctx) override {
 		// check symbol exists
@@ -237,7 +237,7 @@ public:
 		}
 	}
 
-	std::any visitBinopRelEqExpr(woditextParser::BinopRelEqExprContext* ctx) override {
+	/*std::any visitBinopRelEqExpr(woditextParser::BinopRelEqExprContext* ctx) override {
 		wod_type expr1_type = std::any_cast<wod_type>(ctx->expr(0)->accept(this));
 		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
 		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
@@ -250,7 +250,7 @@ public:
 			error(ctx, "equality comparison with mismatched types");
 			return t_error;
 		}
-	}
+	}*/
 
 	std::any visitAssign(woditextParser::AssignContext* ctx) override {
 		wod_type lhs_type = std::any_cast<wod_type>(ctx->lhs()->accept(this));
