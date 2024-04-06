@@ -291,4 +291,25 @@ public:
 		}
 	}
 
+	std::any visitCodeblock(woditextParser::CodeblockContext* ctx) override {
+		st->open_scope();
+		visitChildren(ctx);
+		st->close_scope();
+		return std::any();
+	}
+
+	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
+		st->open_scope();
+		ctx->stmt(0)->accept(this);
+		st->close_scope();
+
+		if (ctx->stmt(1)) {
+			st->open_scope();
+			ctx->stmt(1)->accept(this);
+			st->close_scope();
+		}
+		return std::any();
+
+	}
+
 };
