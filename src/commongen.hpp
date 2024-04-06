@@ -32,7 +32,7 @@ private:
 	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
 	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
 	
-	SymbolTable st;
+	SymbolTable* st;
 
 	void error(antlr4::ParserRuleContext *ctx, std::string message) const {
 		std::cout 
@@ -74,7 +74,7 @@ private:
 		else return false;
 	}
 	bool may_be_str(wod_type wt) {
-		if (wt == t_str || wt == t_dbunknown) return true;
+		if (wt == t_strref || wt == t_dbunknown) return true;
 		else return false;
 	}
 
@@ -90,7 +90,7 @@ private:
 
 		int stackpos;
 		if (ty == t_int) stackpos = int_stack.push_var();
-		else /* t_str */ stackpos = str_stack.push_var();
+		else /* t_strref */ stackpos = str_stack.push_var();
 
 		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
 		current_event->cself_names.at(stackpos) = name;
@@ -109,7 +109,7 @@ private:
 		
 		int stackpos;
 		if (ty == t_int) stackpos = int_stack.push_temp();
-		else /* t_str */ stackpos = str_stack.push_temp();
+		else /* t_strref */ stackpos = str_stack.push_temp();
 
 		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
 		current_event->cself_names.at(stackpos) = "__t" + std::to_string(stackpos);
@@ -206,6 +206,8 @@ private:
 public:
 	CommonFile cf;
 
+	CommonGen(SymbolTable* st) : st(st) {}
+
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 		// reset state
 		int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
@@ -228,7 +230,7 @@ public:
 			current_event->return_cself_id = INT_RETURN_INDEX;
 		}
 		else if (ctx->returntype()->T_STR()) {
-			csym.return_type = t_str;
+			csym.return_type = t_strref;
 			current_event->return_cself_id = STR_RETURN_INDEX;
 		}
 		else error(ctx, "unknown return type");
@@ -247,8 +249,8 @@ public:
 			else if ((*iter)->vartype()->T_STR()) {
 				int index = current_event->new_str_param(name);
 				if (index < 0) error(ctx, "too many str parameters in common definition");
-				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_str));
-				param_types.push_back(t_str);
+				st.insert(VarSymbol(name, CSELF_YOBIDASI + index, t_strref));
+				param_types.push_back(t_strref);
 				// for strings, param space is the same as variable space, so add new var here to reflect that
 				str_stack.push_var();
 			}
@@ -305,7 +307,7 @@ public:
 			current_event->append(std::make_unique<ArithLine>(
 				CSELF_YOBIDASI + INT_RETURN_INDEX, rhs, 0, 0));
 		}
-		else if (curr_return_type == t_str && may_be_str(ex.wt)) {
+		else if (curr_return_type == t_strref && may_be_str(ex.wt)) {
 			// string
 			int_stack.save_temp();
 			WodNumber rhs = eval_unsafe(ctx->expr());
@@ -324,7 +326,7 @@ public:
 
 	std::any visitStringReturn(woditextParser::StringReturnContext* ctx) override {
 		wod_type curr_return_type = st.lookup_common(current_event->name)->return_type;
-		if (curr_return_type != t_str) {
+		if (curr_return_type != t_strref) {
 			error(ctx, "type of returned value is different from common event return type");
 			return std::any();
 		}
@@ -515,7 +517,7 @@ public:
 			std::string varname = ctx->lhs()->ID()->getText();
 			if (ctx->lhs()->decl()) {
 				if (ctx->lhs()->decl()->vartype()->T_STR()) {
-					new_var(varname, t_str);
+					new_var(varname, t_strref);
 				}
 				else error(ctx, "cannot assign integer literal to string variable");
 			}
@@ -555,7 +557,7 @@ public:
 						error(ctx, "tried to pass string literal into integer arg");
 					int_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 				}
-				else if (symbol->params.at(i) == t_str) {
+				else if (symbol->params.at(i) == t_strref) {
 					if (ctx->call()->expr_or_str(i)->expr())
 						str_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 					else str_args.push_back(trim(ctx->call()->expr_or_str(i)->STRING()->getText()));
@@ -634,7 +636,7 @@ public:
 					if (ctx->call()->expr_or_str(i)->STRING()) error(ctx, "tried to pass string literal into integer arg");
 					int_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 				}
-				else if (symbol->params.at(i) == t_str) {
+				else if (symbol->params.at(i) == t_strref) {
 					if (ctx->call()->expr_or_str(i)->expr())
 						str_args.push_back(eval_safe(ctx->call()->expr_or_str(i)->expr()).value);
 					else str_args.push_back(trim(ctx->call()->expr_or_str(i)->STRING()->getText()));
@@ -751,7 +753,7 @@ public:
 	std::any visitDecl(woditextParser::DeclContext* ctx) override {
 		std::string varname = ctx->ID()->getText();
 		if (ctx->vartype()->T_INT()) new_var(varname, t_int);
-		else /* string type */		 new_var(varname, t_str);
+		else /* string type */		 new_var(varname, t_strref);
 
 		return std::any();
 	}

@@ -8,32 +8,28 @@ enum wod_type {
 	t_dbunknown,
 	t_void,
 	t_int,
-	t_str
+
+	// separate string literals from other strings (i.e. references) because 
+	// they have to be handled differently in a command
+	t_str,
+	t_strlit
 };
 
 /**
 * Symbols: Since common events are always globally scoped, hold their symbols in a separate table.
 */
 struct VarSymbol {
-	VarSymbol(std::string name, int32_t yobidasi, wod_type type)
-		: name(name), yobidasi(yobidasi), type(type) {}
-
 	VarSymbol(int32_t yobidasi, int32_t cself_index, wod_type type)
 		: yobidasi(yobidasi), cself_index(cself_index), type(type) {}
-	std::string name; // DEPRECATE
 	int32_t yobidasi;
 	int32_t cself_index;
 	wod_type type;
 };
 
 struct CommonSymbol {
-	CommonSymbol(std::string name) : name(name) {}
+	CommonSymbol(wod_type return_type, std::vector<wod_type> params)
+		: return_type(return_type), params(params) {}
 
-	// DEPRECATE
-	CommonSymbol(std::string name, wod_type return_type, std::vector<wod_type> params)
-		: name(name), return_type(return_type), params(params) {}
-
-	std::string name;
 	wod_type return_type = t_void;
 	std::vector<wod_type> params;
 	CommonEvent* cev = nullptr;
@@ -115,21 +111,23 @@ public:
 
 	/**
 	* Insert a variable into the symbol table.
+	* @param name		Name of symbol.
 	* @param symbol		Symbol.
 	* @return			True if successful, false if duplicate.
 	*/
-	bool insert(VarSymbol symbol) {
-		return curr_scope->insert(symbol.name, std::make_unique<VarSymbol>(symbol));
+	bool insert(std::string name, VarSymbol symbol) {
+		return curr_scope->insert(name, std::make_unique<VarSymbol>(symbol));
 	}
 
 	/**
 	* Insert a common event into the symbol table.
+	* @param name		Name of symbol.
 	* @param symbol		Common event prototype.
 	* @return			True if successful, false if duplicate.
 	*/
-	bool insert(CommonSymbol symbol) {
+	bool insert(std::string name, CommonSymbol symbol) {
 		std::pair<CommonTable::iterator, bool> res = common_table.insert(
-			std::make_pair(symbol.name, std::make_unique<CommonSymbol>(symbol)));
+			std::make_pair(name, std::make_unique<CommonSymbol>(symbol)));
 		return res.second;
 	}
 

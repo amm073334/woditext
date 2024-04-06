@@ -54,17 +54,14 @@ linestmt
     | lhs '*=' expr     # Assign
     | lhs '/=' expr     # Assign
     | lhs '%=' expr     # Assign
-    | lhs '=' STRING    # StringAssign
-    | lhs '+=' STRING    # StringAssign
     | BREAK             # Break
     | CONTINUE          # Continue
     | RETURN expr?      # Return
-    | RETURN STRING      # StringReturn
     ;
 
 lhs
-    : decl              
-    | ID               
+    : decl
+    | var
     | dbaccess          
     ;
 
@@ -72,32 +69,34 @@ decl
     : vartype ID
     ;
 
+var
+    : ID
+    ;
+
 dbaccess
-    : (UDB | CDB | SDB) '[' expr_or_str ']' '[' expr_or_str ']' '[' expr_or_str ']'
+    : (UDB | CDB | SDB) '[' expr ']' '[' expr ']' '[' expr ']'
     ;
 
 call
-    : ID '(' (expr_or_str (',' expr_or_str)*)? ')'
-    ;
-
-expr_or_str
-    : expr | STRING
+    : ID '(' (expr (',' expr)*)? ')'
     ;
 
 expr
-    : call                                  # CallExpr
+locals [wod_type wt = t_error]
+    : call                                  # CallExpr 
     | dbaccess                              # DBExpr
     | '-' expr                              # UnaryMinusExpr
     | '!' expr                              # LogicalNotExpr
     | expr ('*' | '/' | '%') expr           # BinopExpr
     | expr ('+' | '-') expr                 # BinopExpr
     | expr ('<' | '<=' | '>' | '>=') expr   # BinopRelExpr
-    | expr ('==' | '!=') expr               # BinopRelExpr
+    | expr ('==' | '!=') expr               # BinopRelEqExpr
     | expr ('&') expr                       # BinopExpr
     | '(' expr ')'                          # ParenExpr
-    | ID                                    # IdExpr
+    | var                                   # VarExpr
     | NUM                                   # NumLit
     | (TRUE | FALSE)                        # BoolLit
+    | STRING                                # StringLit
     ;
 
 
