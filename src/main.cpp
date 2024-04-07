@@ -4,6 +4,7 @@
 #include "woditextLexer.h"
 #include "woditextParser.h"
 #include "commongen.hpp"
+#include "typechecker.hpp"
 
 using namespace antlr4;
 
@@ -24,16 +25,19 @@ int main(int argc, const char* argv[])
 	CommonTokenStream tokens(&lexer);
 	woditextParser parser(&tokens);
 
-	//tree::ParseTree* tree = parser.commonlist();
-	CommonGen visitor;
-	//tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
 	woditextParser::CommonlistContext* tree = parser.commonlist();
-	visitor.visitCommonlist(tree);
+	SymbolTable st;
+	
+	TypeChecker tc(&st);
+	tc.visitCommonlist(tree);
+
+	CommonGen cg(&st);
+	cg.visitCommonlist(tree);
 
 	if (argc == 3) {
-		visitor.cf.generate(argv[2]);
+		cg.cf.generate(argv[2]);
 	} else {
-		visitor.cf.generate("out.common");
+		cg.cf.generate("out.common");
 	}
 
 	return 0;

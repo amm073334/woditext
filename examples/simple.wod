@@ -12,10 +12,10 @@ int test_func(int param, str string, int another) {
 
     CDB[4]["test"][1] = bsdf;
 
-    int a = test_func(2 + param, 1600005, 1600005);
-    test_func(1, 2, 3);
-    return asdf;
-    return "hi";
+    // int a = test_func(2 + param, 1600005, 1600005);
+    // test_func(1, 2, 3);
+    // return asdf;
+    // return "hi";
     ループ {
         int test = 5;
         test += 1;
@@ -23,7 +23,7 @@ int test_func(int param, str string, int another) {
         continue;
         ループ中断;
         ループ開始へ;
-        return;
+        // return;
     }
 
     loop (1781323 + 2) {
@@ -33,7 +33,7 @@ int test_func(int param, str string, int another) {
     
     整数 テスト = 5;
 
-    a += CDB[23][param][1] + UDB[1][2][3] / SDB[3][2][1];
+    int a += CDB[23][param][1] + UDB[1][2][3] / SDB[3][2][1];
     UDB[2][3][4] = a + 2;
 
     loop (param) another = 2;
@@ -64,7 +64,7 @@ int test_func(int param, str string, int another) {
 }
 
 void test2() {
-    test_func(1,2,3);
+    // test_func(1,2,3);
 
     // aghjsfd = 1;
 }

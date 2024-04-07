@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 
@@ -31,7 +33,6 @@ struct CommonSymbol {
 
 	wod_type return_type = t_void;
 	std::vector<wod_type> params;
-	CommonEvent* cev = nullptr;
 };
 
 /**
@@ -60,11 +61,11 @@ private:
 	* Insert a variable into the scope.
 	* @param name		Variable name.
 	* @param symbol		Symbol.
-	* @return			True if successful, false if failed.
+	* @return			Pointer to symbol if successful, nullptr if failed.
 	*/
-	bool insert(std::string name, std::unique_ptr<VarSymbol> symbol) {
+	VarSymbol* insert(std::string name, std::unique_ptr<VarSymbol> symbol) {
 		std::pair<VarScopeTable::iterator, bool> res = table.insert(std::make_pair(name, std::move(symbol)));
-		return res.second;
+		return res.second ? res.first->second.get() : nullptr;
 	}
 
 	/**
@@ -112,9 +113,9 @@ public:
 	* Insert a variable into the symbol table.
 	* @param name		Name of symbol.
 	* @param symbol		Symbol.
-	* @return			True if successful, false if duplicate.
+	* @return			Pointer to symbol if successful, nullptr if duplicate.
 	*/
-	bool insert(std::string name, VarSymbol symbol) {
+	VarSymbol* insert(std::string name, VarSymbol symbol) {
 		return curr_scope->insert(name, std::make_unique<VarSymbol>(symbol));
 	}
 

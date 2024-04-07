@@ -38,11 +38,16 @@ private:
 		exit(1);
 	}
 	
+	/**
+	* Functions for figuring out whether or not a type *might* be a given type.
+	* This is needed because the compiler has no information about the user's DB settings;
+	* therefore, whenever DB access is done, it's unknown whether the retrieved value is
+	* an int or a string.
+	*/
 	bool may_be_int(wod_type wt) {
 		if (wt == t_int || wt == t_dbunknown) return true;
 		else return false;
 	}
-
 	bool may_be_str(wod_type wt) {
 		if (wt == t_str || wt == t_strlit || wt == t_dbunknown) return true;
 		else return false;
@@ -75,14 +80,16 @@ public:
 			if ((*iter)->vartype()->T_INT()) {
 				if (num_int_params > MAX_PARAM_COUNT)
 					error(ctx, "too many int parameters in common definition");
-				st->insert(param_name, VarSymbol(CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
+				bool success = st->insert(param_name, VarSymbol(CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
+				if (!success) error(ctx, "duplicate parameter '" + param_name + "'");
 				param_types.push_back(t_int);
 				num_int_params++;
 			}
 			else if ((*iter)->vartype()->T_STR()) {
 				if (num_str_params > MAX_PARAM_COUNT)
 					error(ctx, "too many str parameters in common definition");
-				st->insert(param_name, VarSymbol(CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
+				bool success = st->insert(param_name, VarSymbol(CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
+				if (!success) error(ctx, "duplicate parameter '" + param_name + "'");
 				param_types.push_back(t_str);
 				// for strings, param space is the same as variable space, so add new var here to reflect that
 				str_stack.push_var();
@@ -95,7 +102,7 @@ public:
 
 		// make common event symbol
 		CommonSymbol csym(current_return_type, param_types);
-		st->insert(common_name, csym);
+		if (!st->insert(common_name, csym)) error(ctx, "redeclaration of common '" + common_name + "'");
 
 		// visit code
 		ctx->codeblock()->accept(this);
@@ -169,7 +176,7 @@ public:
 		// if return is empty, then function should return void
 		if (!ctx->expr()) {
 			if (current_return_type != t_void) {
-				error(ctx, "returned non-void in void-returning common");
+				error(ctx, "returned nothing in common that expects a return value");
 			}
 			return t_error;
 		}
@@ -208,14 +215,17 @@ public:
 		else /* string */ stackpos = str_stack.push_var();
 
 		VarSymbol sym = VarSymbol(CSELF_YOBIDASI + stackpos, stackpos, wt);
-		if (!st->insert(varname, sym)) error(ctx, "duplicate declaration of " + varname);
+		ctx->vs = st->insert(varname, sym);
+		if (!ctx->vs) error(ctx, "duplicate declaration of " + varname);
 
 		return wt;
 	}
 
 	std::any visitVar(woditextParser::VarContext* ctx) override {
-		VarSymbol* sym = st->lookup_var(ctx->ID()->getText());
-		if (!sym) { error(ctx, "undefined variable"); return t_error; }
+		std::string varname = ctx->ID()->getText();
+		VarSymbol* sym = st->lookup_var(varname);
+		if (!sym) { error(ctx, "undefined variable '" + varname + "'"); return t_error; }
+		ctx->vs = sym;
 
 		return sym->type;
 	}
@@ -242,8 +252,10 @@ public:
 
 	std::any visitCall(woditextParser::CallContext* ctx) override {
 		// check symbol exists
-		CommonSymbol* sym = st->lookup_common(ctx->ID()->getText());
-		if (!sym) { error(ctx, "undefined common"); return t_error; }
+		std::string common_name = ctx->ID()->getText();
+		CommonSymbol* sym = st->lookup_common(common_name);
+		if (!sym) { error(ctx, "undefined common '" + common_name + "'"); return t_error; }
+		ctx->cs = sym;
 
 		// check arg count
 		int numargs = ctx->expr().size();
@@ -340,10 +352,14 @@ public:
 		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
 		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
 			ctx->wt = t_int;
+			if (expr1_type == t_dbunknown) ctx->expr(0)->wt = t_int; // type inference
+			if (expr2_type == t_dbunknown) ctx->expr(1)->wt = t_int;
 			return t_int;
 		}
 		else if (may_be_str(expr1_type) && may_be_str(expr2_type)) {
 			ctx->wt = t_int;
+			if (expr1_type == t_dbunknown) ctx->expr(0)->wt = t_str;
+			if (expr2_type == t_dbunknown) ctx->expr(1)->wt = t_str;
 			return t_int;
 		}
 		else {

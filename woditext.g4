@@ -1,5 +1,9 @@
 grammar woditext;
 
+@header {
+#include "src/symboltable.hpp"
+}
+
 // parser
 commonlist
     : common* EOF
@@ -66,10 +70,12 @@ lhs
     ;
 
 decl
+locals [VarSymbol* vs]
     : vartype ID
     ;
 
 var
+locals [VarSymbol* vs]
     : ID
     ;
 
@@ -78,10 +84,13 @@ dbaccess
     ;
 
 call
+locals [CommonSymbol* cs]
     : ID '(' (expr (',' expr)*)? ')'
     ;
 
 expr
+// apparently, using locals is somewhat frowned upon, but it seems useful for
+// getting different code generation depending on expression type
 locals [wod_type wt = t_error]
     : call                                  # CallExpr 
     | dbaccess                              # DBExpr
