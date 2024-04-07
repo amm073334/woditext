@@ -10,15 +10,11 @@ commonlist
     ;
 
 common
-    : returntype ID '(' (param (',' param)*)? ')' codeblock 
+    : returntype ID '(' (param (',' param)*)? ')' '{' stmt* '}' 
     ;
 
 param
     : vartype ID
-    ;
-
-codeblock
-    : '{' stmt* '}'
     ;
 
 ifstmt
@@ -42,11 +38,15 @@ loopstmt
     | WHILE '(' expr ')' stmt      # WhileLoop
     ;
 
+codeblockstmt
+    : '{' stmt* '}'
+    ;
+
 stmt
     : linestmt ';'
     | loopstmt
     | ifstmt
-    | codeblock
+    | codeblockstmt
     ;
 
 linestmt

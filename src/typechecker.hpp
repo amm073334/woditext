@@ -57,6 +57,9 @@ public:
     TypeChecker(SymbolTable* st) : st(st) {}
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
+
+		st->open_scope();
+
 		// reset state
 		int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
 		str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
@@ -105,12 +108,16 @@ public:
 		if (!st->insert(csym)) error(ctx, "redeclaration of common '" + common_name + "'");
 
 		// visit code
-		ctx->codeblock()->accept(this);
-	
+		std::vector<woditextParser::StmtContext*> stmts = ctx->stmt();
+		for (auto iter = stmts.begin(); iter != stmts.end(); iter++)
+			(*iter)->accept(this);
+
+		st->close_scope();
+
 		return t_error;
 	}
 
-	std::any visitCodeblock(woditextParser::CodeblockContext* ctx) override {
+	std::any visitCodeblockstmt(woditextParser::CodeblockstmtContext* ctx) override {
 		st->open_scope();
 		visitChildren(ctx);
 		st->close_scope();

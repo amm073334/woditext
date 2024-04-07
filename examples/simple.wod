@@ -10,9 +10,8 @@ int test_func(int param, str string, int another) {
     // asdf = "hello world";
     // asdf = bsdf;
     // int afnm = 2 + "bsdf";
-
-    if ("ab" == string) {
-    }
+    // if ("ab" == string) {
+    // }
 
     if ("ab" == "bc") {}
 

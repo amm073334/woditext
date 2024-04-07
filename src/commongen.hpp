@@ -185,16 +185,18 @@ public:
 		}
 
 		// visit code
-		bool has_code = std::any_cast<bool>(ctx->codeblock()->accept(this));
+		std::vector<woditextParser::StmtContext*> stmts = ctx->stmt();
+		for (auto iter = stmts.begin(); iter != stmts.end(); iter++)
+			(*iter)->accept(this);
 
 		// if a common is completely blank, the engine will determine commonevent.dat as corrupted
 		// append an empty line at the end of the common to alleviate this
-		if (!has_code) current_event->append(std::make_unique<EmptyLine>());
+		if (stmts.size() == 0) current_event->append(std::make_unique<EmptyLine>());
 
 		return std::any();
 	}
 
-	std::any visitCodeblock(woditextParser::CodeblockContext* ctx) override {
+	std::any visitCodeblockstmt(woditextParser::CodeblockstmtContext* ctx) override {
 		visitChildren(ctx);
 
 		// return a boolean value indicating whether or not the codeblock contained at least one statement
