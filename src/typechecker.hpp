@@ -45,12 +45,10 @@ private:
 	* an int or a string.
 	*/
 	bool may_be_int(wod_type wt) {
-		if (wt == t_int || wt == t_dbunknown) return true;
-		else return false;
+		return (wt == t_int || wt == t_dbunknown);
 	}
 	bool may_be_str(wod_type wt) {
-		if (wt == t_str || wt == t_strlit || wt == t_dbunknown) return true;
-		else return false;
+		return (wt == t_str || wt == t_strlit || wt == t_dbunknown);
 	}
 
 public:
