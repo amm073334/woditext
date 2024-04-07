@@ -143,20 +143,16 @@ private:
 		std::variant<int32_t, std::string> type, data, value;
 
 		ec = ctx->expr(0);
-		if (ec->wt == t_strlit) type = trim(ec->getText());
+		if (ec->wt == t_strlit) type = ec->getText();
 		else type = eval_safe(ec).value;
 		ec = ctx->expr(1);
-		if (ec->wt == t_strlit) data = trim(ec->getText());
+		if (ec->wt == t_strlit) data = ec->getText();
 		else data = eval_safe(ec).value;
 		ec = ctx->expr(2);
-		if (ec->wt == t_strlit) value = trim(ec->getText());
+		if (ec->wt == t_strlit) value = ec->getText();
 		else value = eval_safe(ec).value;
 
 		return {type, data, value};
-	}
-
-	std::string trim(std::string in) {
-		return in.substr(1, in.size() - 2);
 	}
 
 public:
@@ -353,7 +349,7 @@ public:
 			}
 
 			current_event->append(std::make_unique<StringLine>(
-				sym->yobidasi, assign, trim(ctx->expr()->getText())));
+				sym->yobidasi, assign, ctx->expr()->getText()));
 		}
 		
 		return std::any();
@@ -387,7 +383,7 @@ public:
 		}
 		else if (expr_type == t_strlit) {
 			current_event->append(std::make_unique<StringLine>(
-				CSELF_YOBIDASI + STR_RETURN_INDEX, StringLine::FLAG_COPY_STRVAR, trim(ctx->expr()->getText())));
+				CSELF_YOBIDASI + STR_RETURN_INDEX, StringLine::FLAG_COPY_STRVAR, ctx->expr()->getText()));
 		}
 		current_event->append(std::make_unique<ReturnLine>());
 
@@ -458,7 +454,7 @@ public:
 			else if (symbol->params.at(i) == t_str) {
 				if (ctx->call()->expr(i)->wt == t_str)
 					str_args.push_back(eval_safe(ctx->call()->expr(i)).value);
-				else str_args.push_back(trim(ctx->call()->expr(i)->getText()));
+				else str_args.push_back(ctx->call()->expr(i)->getText());
 			} else error(ctx, "no such basetype");
 		}
 		int_stack.restore_temp();

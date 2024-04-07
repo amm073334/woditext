@@ -154,7 +154,7 @@ T_VOID: 'void' | 'ボイド';
 
 ID: [_\p{Alpha}\p{General_Category=Other_Letter}][_\p{Alnum}\p{General_Category=Other_Letter}]*;
 
-STRING: '"' ~["]* '"';
+STRING: '"' ~["]* '"' {setText(getText().substr(1, getText().size() - 2));};
 
 COMMENT: '//' ~[\r\n]* -> skip;
 
