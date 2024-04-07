@@ -80,7 +80,7 @@ public:
 			if ((*iter)->vartype()->T_INT()) {
 				if (num_int_params > MAX_PARAM_COUNT)
 					error(ctx, "too many int parameters in common definition");
-				bool success = st->insert(param_name, VarSymbol(CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
+				bool success = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
 				if (!success) error(ctx, "duplicate parameter '" + param_name + "'");
 				param_types.push_back(t_int);
 				num_int_params++;
@@ -88,7 +88,7 @@ public:
 			else if ((*iter)->vartype()->T_STR()) {
 				if (num_str_params > MAX_PARAM_COUNT)
 					error(ctx, "too many str parameters in common definition");
-				bool success = st->insert(param_name, VarSymbol(CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
+				bool success = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
 				if (!success) error(ctx, "duplicate parameter '" + param_name + "'");
 				param_types.push_back(t_str);
 				// for strings, param space is the same as variable space, so add new var here to reflect that
@@ -101,8 +101,8 @@ public:
 		}
 
 		// make common event symbol
-		CommonSymbol csym(current_return_type, param_types);
-		if (!st->insert(common_name, csym)) error(ctx, "redeclaration of common '" + common_name + "'");
+		CommonSymbol csym(common_name, current_return_type, param_types);
+		if (!st->insert(csym)) error(ctx, "redeclaration of common '" + common_name + "'");
 
 		// visit code
 		ctx->codeblock()->accept(this);
@@ -214,8 +214,8 @@ public:
 		if (wt == t_int) stackpos = int_stack.push_var();
 		else /* string */ stackpos = str_stack.push_var();
 
-		VarSymbol sym = VarSymbol(CSELF_YOBIDASI + stackpos, stackpos, wt);
-		ctx->vs = st->insert(varname, sym);
+		VarSymbol sym = VarSymbol(varname, CSELF_YOBIDASI + stackpos, stackpos, wt);
+		ctx->vs = st->insert(sym);
 		if (!ctx->vs) error(ctx, "duplicate declaration of " + varname);
 
 		return wt;
@@ -329,7 +329,7 @@ public:
 			return t_int;
 		}
 		else {
-			error(ctx, "binary expression with non-integer types");
+			error(ctx, "arithmetic expression with non-integer types");
 			return t_error;
 		}
 	}

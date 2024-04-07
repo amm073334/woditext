@@ -1,6 +1,6 @@
 grammar woditext;
 
-@header {
+@parser::header {
 #include "src/symboltable.hpp"
 }
 
