@@ -570,8 +570,8 @@ public:
 	}
 
 	std::any visitBinopRelEqExpr(woditextParser::BinopRelEqExprContext* ctx) override {
+		// integer compare
 		if (ctx->expr(0)->wt == t_int) {
-			// integer compare
 			int_stack.save_temp();
 			WodNumber left = eval_unsafe(ctx->expr(0));
 			WodNumber right = eval_unsafe(ctx->expr(1));
@@ -599,9 +599,26 @@ public:
 			current_event->append(std::make_unique<EndBranchLine>());
 			return tempvar;
 		}
+		// string compare
 		else {
-			// string compare
-			// TODO
+			if (ctx->expr(0)->wt == t_str && ctx->expr(1)->wt == t_str) {
+				// both strings are references
+			}
+			else {
+				// at least one string is a string literal
+				if (ctx->expr(0)->wt == t_strlit && ctx->expr(1)->wt == t_strlit) {
+					// both strings are literals; this is not supported by wolf, so create temporary to hold one
+					// we _could_ try to determine the result statically here, but it would cause problems in cases like
+					//		"\cself[5] == \cself[6]"
+					// where the compiler wouldn't know the result of cself 5 and 6 at compile time
+				} 
+				else if (ctx->expr(0)->wt == t_strlit) {
+
+				}
+				else {
+
+				}
+			}
 			return std::any();
 		}
 	}

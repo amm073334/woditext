@@ -263,6 +263,85 @@ private:
     }
 };
 
+// aka ðŒ•ªŠòi•¶Žš—ñj
+class StrIfHeadLine : public Line {
+public:
+    int32_t get_command_id() override { return 112; }
+
+    enum comp_op {
+        op_eq           = 0x00000000,
+        op_neq          = 0x10000000,
+        op_include      = 0x20000000,
+        op_startswith   = 0x30000000
+    };
+
+    StrIfHeadLine() {}
+    StrIfHeadLine(WodNumber arg0, num_or_str arg1, comp_op op) {
+        branches.push_back(Branch(arg0, arg1, op));
+    }
+
+    /**
+    * Add branch to the if statement.
+    * @param arg0, arg1, op     Values to compare and operation to compare with.
+    * @return                   How many branches the if statement now has. -1 if failed to insert.
+    */
+    int add_branch(WodNumber arg0, num_or_str arg1, comp_op op) {
+        if (branches.size() >= MAX_BRANCH_COUNT) return -1;
+        branches.push_back(Branch(arg0, arg1, op));
+        return branches.size();
+    }
+
+    /**
+    * Set whether or not this if statement has an else branch.
+    * @param set    True if it does, false if not.
+    */
+    void set_else_branch(bool set) {
+        has_else_branch = set;
+    }
+
+private:
+    static const int MAX_BRANCH_COUNT = 4;
+
+    struct Branch {
+        Branch(WodNumber arg0, num_or_str arg1, comp_op op)
+            : arg0(arg0.value)
+            , arg1(arg1)
+            , flags(op | (std::holds_alternative<int32_t>(arg1) ? FLAG_STRREF : 0))
+        {}
+        // if the line compares with a string variable instead of a literal
+        static const int32_t FLAG_STRREF = 0x1000000;
+        
+        int32_t arg0;
+        num_or_str arg1;
+        int32_t flags;
+    };
+
+    std::vector<Branch> branches;
+    bool has_else_branch = false;
+    static const int32_t FLAG_HASELSE = 0x10;
+
+    void update_base_data() override {
+        int_fields = {
+            static_cast<int32_t>(branches.size())
+            | (has_else_branch ? FLAG_HASELSE : 0x00)
+        };
+        str_fields = {};
+        
+        for (int i = 0; i < branches.size(); i++) {
+            Branch b = branches.at(i);
+            int_fields.push_back(b.arg0 | b.flags);
+            if (b.FLAG_STRREF & b.flags) {
+                int_fields.push_back(std::get<int32_t>(b.arg1));
+                str_fields.push_back("");
+            }
+            else {
+                str_fields.push_back(std::get<std::string>(b.arg1));
+            }
+        }
+
+    }
+};
+
 class BranchLine : public Line {
 public:
     int32_t get_command_id() override { return 401; }
