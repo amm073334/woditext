@@ -5,10 +5,11 @@ int test_func(int param, str string, int another) {
     adfjlk = 0x55;
     adfjlk = -0X55;
     adfjlk = 0XaF;
-    str asdf;
+    // str asdf;
     str bsdf = "ab";
-    asdf = "hello world";
-    asdf = bsdf;
+    // asdf = "hello world";
+    // asdf = bsdf;
+    // int afnm = 2 + "bsdf";
 
     {
         adfjlk = 1;
@@ -17,10 +18,10 @@ int test_func(int param, str string, int another) {
 
     CDB[4]["test"][1] = bsdf;
 
-    int a = test_func(2 + param, 1600005, 1600005);
-    test_func(1, 2, 3);
-    return asdf;
-    return "hi";
+    int a = test_func(2 + param, "1600005", 1600005);
+    // test_func(1, 2, 3);
+    // return asdf;
+    // return "hi";
     ループ {
         int test = 5;
         test += 1;
@@ -28,7 +29,7 @@ int test_func(int param, str string, int another) {
         continue;
         ループ中断;
         ループ開始へ;
-        return;
+        // return;
     }
 
     loop (1781323 + 2) {
@@ -69,7 +70,7 @@ int test_func(int param, str string, int another) {
 }
 
 void test2() {
-    test_func(1,2,3);
+    // test_func(1,2,3);
 
     // aghjsfd = 1;
 }

@@ -1,5 +1,9 @@
 grammar woditext;
 
+@parser::header {
+#include "src/symboltable.hpp"
+}
+
 // parser
 commonlist
     : common* EOF
@@ -46,7 +50,7 @@ stmt
     ;
 
 linestmt
-    : vartype ID        # Decl
+    : decl              # DeclStmt
     | call              # CallStmt
     | lhs '=' expr      # Assign
     | lhs '+=' expr     # Assign
@@ -54,46 +58,54 @@ linestmt
     | lhs '*=' expr     # Assign
     | lhs '/=' expr     # Assign
     | lhs '%=' expr     # Assign
-    | lhs '=' STRING    # StringAssign
-    | lhs '+=' STRING   # StringAssign
     | BREAK             # Break
     | CONTINUE          # Continue
     | RETURN expr?      # Return
-    | RETURN STRING     # StringReturn
     ;
 
 lhs
+    : decl
+    | var
+    | dbaccess          
+    ;
+
+decl
+locals [VarSymbol* vs = nullptr]
     : vartype ID
-    | ID
-    | dbaccess
+    ;
+
+var
+locals [VarSymbol* vs = nullptr]
+    : ID
     ;
 
 dbaccess
-    : (UDB | CDB | SDB) '[' expr_or_str ']' '[' expr_or_str ']' '[' expr_or_str ']'
+    : (UDB | CDB | SDB) '[' expr ']' '[' expr ']' '[' expr ']'
     ;
 
 call
-    : ID '(' (expr_or_str (',' expr_or_str)*)? ')'
-    ;
-
-expr_or_str
-    : expr | STRING
+locals [CommonSymbol* cs = nullptr]
+    : ID '(' (expr (',' expr)*)? ')'
     ;
 
 expr
-    : call                                  # CallExpr
+// apparently, using locals is somewhat frowned upon, but it seems useful for
+// getting different code generation depending on expression type
+locals [wod_type wt = t_error]
+    : call                                  # CallExpr 
     | dbaccess                              # DBExpr
     | '-' expr                              # UnaryMinusExpr
     | '!' expr                              # LogicalNotExpr
     | expr ('*' | '/' | '%') expr           # BinopExpr
     | expr ('+' | '-') expr                 # BinopExpr
     | expr ('<' | '<=' | '>' | '>=') expr   # BinopRelExpr
-    | expr ('==' | '!=') expr               # BinopRelExpr
+    | expr ('==' | '!=') expr               # BinopRelEqExpr
     | expr ('&') expr                       # BinopExpr
     | '(' expr ')'                          # ParenExpr
-    | ID                                    # IdExpr
+    | var                                   # VarExpr
     | NUM                                   # NumLit
     | (TRUE | FALSE)                        # BoolLit
+    | STRING                                # StringLit
     ;
 
 
@@ -142,7 +154,7 @@ T_VOID: 'void' | 'ボイド';
 
 ID: [_\p{Alpha}\p{General_Category=Other_Letter}][_\p{Alnum}\p{General_Category=Other_Letter}]*;
 
-STRING: '"' ~["]* '"';
+STRING: '"' ~["]* '"' {setText(getText().substr(1, getText().size() - 2));};
 
 COMMENT: '//' ~[\r\n]* -> skip;
 

@@ -1,30 +1,40 @@
 #pragma once
+#include <memory>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 
-enum var_type {
+enum wod_type {
+	t_error,
+	t_dbunknown,
 	t_void,
 	t_int,
-	t_str
+
+	// separate string literals from other strings (i.e. references) because 
+	// they have to be handled differently in a command
+	t_str,
+	t_strlit
 };
 
 /**
 * Symbols: Since common events are always globally scoped, hold their symbols in a separate table.
 */
 struct VarSymbol {
-	VarSymbol(std::string name, int32_t yobidasi, var_type type)
-		: name(name), yobidasi(yobidasi), type(type) {}
+	VarSymbol(std::string name, int32_t yobidasi, int32_t cself_index, wod_type type)
+		: name(name), yobidasi(yobidasi), cself_index(cself_index), type(type) {}
 	std::string name;
 	int32_t yobidasi;
-	var_type type;
+	int32_t cself_index;
+	wod_type type;
 };
 
 struct CommonSymbol {
-	CommonSymbol(std::string name, var_type return_type, std::vector<var_type> params)
+	CommonSymbol(std::string name, wod_type return_type, std::vector<VarSymbol*> params)
 		: name(name), return_type(return_type), params(params) {}
+
 	std::string name;
-	var_type return_type;
-	std::vector<var_type> params;
+	wod_type return_type;
+	std::vector<VarSymbol*> params;
 };
 
 /**
@@ -53,11 +63,11 @@ private:
 	* Insert a variable into the scope.
 	* @param name		Variable name.
 	* @param symbol		Symbol.
-	* @return			True if successful, false if failed.
+	* @return			Pointer to symbol if successful, nullptr if failed.
 	*/
-	bool insert(std::string name, std::unique_ptr<VarSymbol> symbol) {
+	VarSymbol* insert(std::string name, std::unique_ptr<VarSymbol> symbol) {
 		std::pair<VarScopeTable::iterator, bool> res = table.insert(std::make_pair(name, std::move(symbol)));
-		return res.second;
+		return res.second ? res.first->second.get() : nullptr;
 	}
 
 	/**
@@ -104,9 +114,9 @@ public:
 	/**
 	* Insert a variable into the symbol table.
 	* @param symbol		Symbol.
-	* @return			True if successful, false if duplicate.
+	* @return			Pointer to symbol if successful, nullptr if duplicate.
 	*/
-	bool insert(VarSymbol symbol) {
+	VarSymbol* insert(VarSymbol symbol) {
 		return curr_scope->insert(symbol.name, std::make_unique<VarSymbol>(symbol));
 	}
 

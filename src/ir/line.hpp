@@ -9,8 +9,7 @@ typedef std::variant<int32_t, std::string> num_or_str;
 /**
 * Wrapper for an int32_t to distinguish between normal integers and yobidasi hensuu.
 */
-class WodNumber {
-public:
+struct WodNumber {
     WodNumber(int32_t value) : value(value), is_ref(false) {}
     WodNumber(int32_t value, bool is_ref) : value(value), is_ref(is_ref) {}
     bool should_suppress_yobidasi() const { return !is_ref && value >= YOBIDASI_THRESHOLD; }
