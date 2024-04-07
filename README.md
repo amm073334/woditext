@@ -2,6 +2,13 @@ simple dsl to wrap around wolf rpg editor for text-based commonevent editing
 
 see https://github.com/amm073334/woditext-extension for simple vscode syntax highlighting
 
+## running
+```
+wc.exe <input>           --writes output to 'out.common'
+wc.exe <input> <output>  --writes to output 
+```
+
+## example (not very good)
 uses c-style syntax:
 
 ```
