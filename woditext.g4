@@ -70,12 +70,12 @@ lhs
     ;
 
 decl
-locals [VarSymbol* vs]
+locals [VarSymbol* vs = nullptr]
     : vartype ID
     ;
 
 var
-locals [VarSymbol* vs]
+locals [VarSymbol* vs = nullptr]
     : ID
     ;
 
@@ -84,7 +84,7 @@ dbaccess
     ;
 
 call
-locals [CommonSymbol* cs]
+locals [CommonSymbol* cs = nullptr]
     : ID '(' (expr (',' expr)*)? ')'
     ;
 
