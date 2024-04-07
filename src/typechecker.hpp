@@ -169,6 +169,10 @@ public:
 		else if (lhs_wt == t_str && expr_wt == t_int) {
 			error(ctx, "tried to assign integer expression to string");
 		}
+		else if (expr_wt == t_dbunknown) {
+			// do type inference
+			ctx->expr()->wt = lhs_wt;
+		}
 		return t_error;
 	}
 
@@ -326,6 +330,8 @@ public:
 		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
 		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
 			ctx->wt = t_int;
+			if (expr1_type == t_dbunknown) ctx->expr(0)->wt = t_int; // type inference
+			if (expr2_type == t_dbunknown) ctx->expr(1)->wt = t_int;
 			return t_int;
 		}
 		else {
@@ -339,6 +345,8 @@ public:
 		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
 		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
 			ctx->wt = t_int;
+			if (expr1_type == t_dbunknown) ctx->expr(0)->wt = t_int; // type inference
+			if (expr2_type == t_dbunknown) ctx->expr(1)->wt = t_int;
 			return t_int;
 		}
 		else {

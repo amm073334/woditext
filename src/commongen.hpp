@@ -56,11 +56,10 @@ private:
 	* @return	WodNumber value of the temporary.
 	*/
 	WodNumber new_temp(wod_type ty) {
-		assert(ty != t_void);
-		
 		int stackpos;
 		if (ty == t_int) stackpos = int_stack.push_temp();
-		else /* t_str */ stackpos = str_stack.push_temp();
+		else if (ty == t_str) stackpos = str_stack.push_temp();
+		else assert(false);
 
 		int32_t yobidasi = CSELF_YOBIDASI + stackpos;
 		current_event->cself_names.at(stackpos) = "__t" + std::to_string(stackpos);
@@ -422,8 +421,8 @@ public:
 		woditextParser::DbaccessContext* dbctx = ctx->dbaccess();
 
 		int_stack.save_temp();
+		str_stack.save_temp();
 		auto [type, data, value] = eval_dbaccess(dbctx);
-		int_stack.restore_temp();
 
 		DBLine::db_type db;
 		if (ctx->dbaccess()->CDB())			db = DBLine::cdb;
@@ -433,12 +432,14 @@ public:
 		// NB: DB access used in an expression is assumed to retrieve an integer
 		// as the compiler doesn't know the DB layout, it doesn't error when a string is retrieved instead
 		// (but this will cause a runtime error)
-		WodNumber tempvar = new_temp(t_int);
+		WodNumber tempvar = new_temp(ctx->wt);
 		current_event->append(std::make_unique<DBLine>(
 			type, data, value, 
 			db | DBLine::FLAG_ASSIGN_TO_VAR, 
 			tempvar.value
 		));
+		int_stack.restore_temp();
+		str_stack.restore_temp();
 
 		return tempvar;
 	}

@@ -16,6 +16,8 @@ int test_func(int param, str string, int another) {
 
     if ("ab" == "bc") {}
 
+    if (CDB[1][2][3] == "ab") {}
+
     loop {}
     {
         adfjlk = 1;
