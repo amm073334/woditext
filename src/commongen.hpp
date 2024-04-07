@@ -627,6 +627,18 @@ public:
 					// we _could_ try to determine the result statically here, but it would cause problems in cases like
 					//		"\cself[5] == \cself[6]"
 					// where the compiler wouldn't know the result of cself 5 and 6 at compile time
+
+					str_stack.save_temp();
+					WodNumber strtemp = new_temp(t_str);
+					str_stack.restore_temp();
+
+					current_event->append(std::make_unique<StringLine>(
+						strtemp.value, StringLine::assign_eq, ctx->expr(0)->getText()));
+					std::unique_ptr<StrIfHeadLine> headline
+						= std::make_unique<StrIfHeadLine>(strtemp.value, ctx->expr(1)->getText(), op);
+					headline->set_else_branch(true);
+
+					current_event->append(std::move(headline));
 				} 
 				else if (ctx->expr(0)->wt == t_strlit) {
 					int_stack.save_temp();
