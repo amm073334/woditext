@@ -78,7 +78,7 @@ int test_func(int param, str string, int another) {
 }
 
 void test2() {
-    // test_func(1,2,3);
+    test_func(1,"asd",3);
 
-    // aghjsfd = 1;
+    int aghjsfd = 1;
 }

@@ -202,6 +202,35 @@ public:
 		else return true;
 	}
 
+	std::any visitCallStmt(woditextParser::CallStmtContext* ctx) override {
+		CommonSymbol* symbol = ctx->call()->cs;
+
+		int numargs = ctx->call()->expr().size();
+		int_stack.save_temp();
+		// eval args
+		std::vector<int32_t> int_args;
+		std::vector<num_or_str> str_args;
+		for (int i = 0; i < numargs; i++) {
+			if (symbol->params.at(i)->type == t_int) {
+				int_args.push_back(eval_safe(ctx->call()->expr(i)).value);
+			}
+			else if (symbol->params.at(i)->type == t_str) {
+				if (ctx->call()->expr(i)->wt == t_str)
+					str_args.push_back(eval_safe(ctx->call()->expr(i)).value);
+				else str_args.push_back(ctx->call()->expr(i)->getText());
+			}
+			else error(ctx, "no such basetype");
+		}
+		int_stack.restore_temp();
+
+		// insert line
+		WodNumber tempvar = new_temp(t_int);
+		current_event->append(std::make_unique<CallByNameLine>(
+			ctx->call()->ID()->getText(), int_args, str_args));
+
+		return tempvar;
+	}
+
 	std::any visitIfstmt(woditextParser::IfstmtContext* ctx) override {
 		int_stack.save_temp();
 		WodNumber condition = eval_unsafe(ctx->expr());
