@@ -577,10 +577,10 @@ public:
 			WodNumber right = eval_unsafe(ctx->expr(1));
 			int_stack.restore_temp();
 
-			IntIfHeadLine::comp_op op = IntIfHeadLine::op_gt;
+			IntIfHeadLine::comp_op op;
 			if (ctx->OP_EQ()) op = IntIfHeadLine::op_eq;
 			else if (ctx->OP_NEQ()) op = IntIfHeadLine::op_neq;
-			else error(ctx, "panic");
+			else { assert(false); return std::any(); }
 
 			std::unique_ptr<IntIfHeadLine> headline = std::make_unique<IntIfHeadLine>(left, right, op);
 			headline->set_else_branch(true);
@@ -601,11 +601,27 @@ public:
 		}
 		// string compare
 		else {
+			StrIfHeadLine::comp_op op;
+			if (ctx->OP_EQ()) op = StrIfHeadLine::op_eq;
+			else if (ctx->OP_NEQ()) op = StrIfHeadLine::op_neq;
+			else assert(false);
+		
+			// both strings are references
 			if (ctx->expr(0)->wt == t_str && ctx->expr(1)->wt == t_str) {
+				int_stack.save_temp();
+				WodNumber left = eval_safe(ctx->expr(0));
+				WodNumber right = eval_safe(ctx->expr(1));
+				int_stack.restore_temp();
+
 				// both strings are references
+				std::unique_ptr<StrIfHeadLine> headline = std::make_unique<StrIfHeadLine>(left.value, right.value, op);
+				headline->set_else_branch(true);
+
+				current_event->append(std::move(headline));
+				
 			}
+			// at least one string is a string literal
 			else {
-				// at least one string is a string literal
 				if (ctx->expr(0)->wt == t_strlit && ctx->expr(1)->wt == t_strlit) {
 					// both strings are literals; this is not supported by wolf, so create temporary to hold one
 					// we _could_ try to determine the result statically here, but it would cause problems in cases like
@@ -613,13 +629,41 @@ public:
 					// where the compiler wouldn't know the result of cself 5 and 6 at compile time
 				} 
 				else if (ctx->expr(0)->wt == t_strlit) {
+					int_stack.save_temp();
+					WodNumber right = eval_safe(ctx->expr(1));
+					int_stack.restore_temp();
 
-				}
-				else {
+					std::unique_ptr<StrIfHeadLine> headline
+						= std::make_unique<StrIfHeadLine>(right.value, ctx->expr(0)->getText(), op);
+					headline->set_else_branch(true);
 
+					current_event->append(std::move(headline));
 				}
+				else if (ctx->expr(1)->wt == t_strlit) {
+					int_stack.save_temp();
+					WodNumber left = eval_safe(ctx->expr(0));
+					int_stack.restore_temp();
+
+					std::unique_ptr<StrIfHeadLine> headline
+						= std::make_unique<StrIfHeadLine>(left.value, ctx->expr(1)->getText(), op);
+					headline->set_else_branch(true);
+
+					current_event->append(std::move(headline));
+				} else assert(false);
 			}
-			return std::any();
+
+			WodNumber tempvar = new_temp(t_int);
+
+			current_event->append(std::make_unique<BranchLine>(1));
+			current_event->append(std::make_unique<ArithLine>(
+				tempvar, 1, 0, ArithLine::assign_eq | ArithLine::op_plus));
+
+			current_event->append(std::make_unique<ElseBranchLine>());
+			current_event->append(std::make_unique<ArithLine>(
+				tempvar, 0, 0, ArithLine::assign_eq | ArithLine::op_plus));
+
+			current_event->append(std::make_unique<EndBranchLine>());
+			return tempvar;
 		}
 	}
 

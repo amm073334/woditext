@@ -11,6 +11,10 @@ int test_func(int param, str string, int another) {
     // asdf = bsdf;
     // int afnm = 2 + "bsdf";
 
+    if (bsdf == "ab") {
+        return 3;
+    }
+
     {
         adfjlk = 1;
         int adfjlk = 2;
