@@ -60,7 +60,7 @@ void CommonEvent::update_indent(Line* l) {
             l->indent_level = prev_indent - 1;
         }
         else if ((is_branch_head(prev_command) || is_codeblock_header(prev_command))
-                && !is_branch_head(curr_command)) {
+                && !is_branch_head(curr_command) && !is_codeblock_footer(curr_command)) {
             l->indent_level = prev_indent + 1;
         }
         else {
