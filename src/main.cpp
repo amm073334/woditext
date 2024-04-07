@@ -27,17 +27,18 @@ int main(int argc, const char* argv[])
 
 	woditextParser::CommonlistContext* tree = parser.commonlist();
 	SymbolTable st;
+	CommonFile cf;
 	
 	TypeChecker tc(&st);
 	tc.visitCommonlist(tree);
 
-	CommonGen cg(&st);
+	CommonGen cg(&st, &cf);
 	cg.visitCommonlist(tree);
 
 	if (argc == 3) {
-		cg.cf.generate(argv[2]);
+		cf.generate(argv[2]);
 	} else {
-		cg.cf.generate("out.common");
+		cf.generate("out.common");
 	}
 
 	return 0;

@@ -31,7 +31,7 @@ struct CommonSymbol {
 	CommonSymbol(wod_type return_type, std::vector<wod_type> params)
 		: return_type(return_type), params(params) {}
 
-	wod_type return_type = t_void;
+	wod_type return_type;
 	std::vector<wod_type> params;
 };
 

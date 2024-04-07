@@ -19,6 +19,7 @@ private:
 	static const int STR_VAR_STACK_START = 5;
 	static const int STR_TEMP_STACK_START = 8;
 	
+	static const int VOID_RETURN_INDEX = -1;
 	static const int INT_RETURN_INDEX = 99;
 	static const int STR_RETURN_INDEX = 9;
 
@@ -31,6 +32,7 @@ private:
 	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
 	
 	SymbolTable* st;
+	CommonFile* cf;
 
 	void error(antlr4::ParserRuleContext *ctx, std::string message) const {
 		std::cout 
@@ -158,9 +160,7 @@ private:
 	}
 
 public:
-	CommonFile cf;
-
-	CommonGen(SymbolTable* st) : st(st) {}
+	CommonGen(SymbolTable* st, CommonFile* cf) : st(st), cf(cf) {}
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 		// reset state
@@ -168,22 +168,25 @@ public:
 		str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
 
 		// make new commonevent
-		current_event = cf.add_common(std::make_unique<CommonEvent>());
+		current_event = cf->add_common(std::make_unique<CommonEvent>());
 
 		std::string common_name = ctx->ID()->getText();
+		current_event->name = common_name;
 
 		CommonSymbol* csym = st->lookup_common(common_name);
 		if (csym->return_type == t_int)
 			current_event->return_cself_id = INT_RETURN_INDEX;
 		else if (csym->return_type == t_str)
 			current_event->return_cself_id = STR_RETURN_INDEX;
-		else error(ctx, "panic");
+		else if (csym->return_type == t_void)
+			current_event->return_cself_id = VOID_RETURN_INDEX;
+		else assert(false);
 
 		// handle params
 		for (auto& p : csym->params) {
 			if (p == t_int) current_event->new_int_param("");
 			else if (p == t_str) current_event->new_str_param("");
-			else error(ctx, "panic");
+			else assert(false);
 		}
 
 		// visit code
@@ -389,6 +392,10 @@ public:
 		current_event->append(std::make_unique<ReturnLine>());
 
 		return std::any();
+	}
+
+	std::any visitVar(woditextParser::VarContext* ctx) override {
+		return WodNumber(ctx->vs->yobidasi, true);
 	}
 
 	std::any visitNumLit(woditextParser::NumLitContext* ctx) override {
