@@ -350,6 +350,8 @@ public:
 	std::any visitBinopRelEqExpr(woditextParser::BinopRelEqExprContext* ctx) override {
 		wod_type expr1_type = std::any_cast<wod_type>(ctx->expr(0)->accept(this));
 		wod_type expr2_type = std::any_cast<wod_type>(ctx->expr(1)->accept(this));
+		if (expr1_type == t_dbunknown && expr2_type == t_dbunknown)
+			error(ctx, "could not determine type of equality check");
 		if (may_be_int(expr1_type) && may_be_int(expr2_type)) {
 			ctx->wt = t_int;
 			if (expr1_type == t_dbunknown) ctx->expr(0)->wt = t_int; // type inference
