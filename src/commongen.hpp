@@ -180,8 +180,8 @@ public:
 
 		// handle params
 		for (auto& p : csym->params) {
-			if (p == t_int) current_event->new_int_param("");
-			else if (p == t_str) current_event->new_str_param("");
+			if (p->type == t_int) current_event->new_int_param(p->name);
+			else if (p->type == t_str) current_event->new_str_param(p->name);
 			else assert(false);
 		}
 
@@ -456,10 +456,10 @@ public:
 		std::vector<int32_t> int_args;
 		std::vector<num_or_str> str_args;
 		for (int i = 0; i < numargs; i++) {
-			if (symbol->params.at(i) == t_int) {
+			if (symbol->params.at(i)->type == t_int) {
 				int_args.push_back(eval_safe(ctx->call()->expr(i)).value);
 			}
-			else if (symbol->params.at(i) == t_str) {
+			else if (symbol->params.at(i)->type == t_str) {
 				if (ctx->call()->expr(i)->wt == t_str)
 					str_args.push_back(eval_safe(ctx->call()->expr(i)).value);
 				else str_args.push_back(ctx->call()->expr(i)->getText());

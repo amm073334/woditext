@@ -73,24 +73,24 @@ public:
 		// handle params
 		int num_int_params = 0;
 		int num_str_params = 0;
-		std::vector<wod_type> param_types;
-		std::vector<woditextParser::ParamContext*> params = ctx->param();
-		for (auto iter = params.begin(); iter != params.end(); iter++) {
+		std::vector<VarSymbol*> params;
+		std::vector<woditextParser::ParamContext*> paramctxs = ctx->param();
+		for (auto iter = paramctxs.begin(); iter != paramctxs.end(); iter++) {
 			std::string param_name = (*iter)->ID()->getText();
 			if ((*iter)->vartype()->T_INT()) {
 				if (num_int_params > MAX_PARAM_COUNT)
 					error(ctx, "too many int parameters in common definition");
-				bool success = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
-				if (!success) error(ctx, "duplicate parameter '" + param_name + "'");
-				param_types.push_back(t_int);
+				VarSymbol* vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
+				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
+				params.push_back(vs);
 				num_int_params++;
 			}
 			else if ((*iter)->vartype()->T_STR()) {
 				if (num_str_params > MAX_PARAM_COUNT)
 					error(ctx, "too many str parameters in common definition");
-				bool success = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
-				if (!success) error(ctx, "duplicate parameter '" + param_name + "'");
-				param_types.push_back(t_str);
+				VarSymbol* vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
+				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
+				params.push_back(vs);
 				// for strings, param space is the same as variable space, so add new var here to reflect that
 				str_stack.push_var();
 				num_str_params++;
@@ -101,7 +101,7 @@ public:
 		}
 
 		// make common event symbol
-		CommonSymbol csym(common_name, current_return_type, param_types);
+		CommonSymbol csym(common_name, current_return_type, params);
 		if (!st->insert(csym)) error(ctx, "redeclaration of common '" + common_name + "'");
 
 		// visit code
@@ -266,11 +266,11 @@ public:
 		std::vector<num_or_str> str_args;
 		for (int i = 0; i < numargs; i++) {
 			wod_type arg_type = std::any_cast<wod_type>(ctx->expr(i)->accept(this));
-			if (sym->params.at(i) == t_int) {
+			if (sym->params.at(i)->type == t_int) {
 				if (!may_be_int(arg_type))
 					error(ctx, "call argument type mismatch");
 			}
-			else if (sym->params.at(i) == t_str) {
+			else if (sym->params.at(i)->type == t_str) {
 				if (!may_be_str(arg_type))
 					error(ctx, "call argument type mismatch");
 			}

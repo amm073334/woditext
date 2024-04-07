@@ -29,12 +29,12 @@ struct VarSymbol {
 };
 
 struct CommonSymbol {
-	CommonSymbol(std::string name, wod_type return_type, std::vector<wod_type> params)
+	CommonSymbol(std::string name, wod_type return_type, std::vector<VarSymbol*> params)
 		: name(name), return_type(return_type), params(params) {}
 
 	std::string name;
 	wod_type return_type;
-	std::vector<wod_type> params;
+	std::vector<VarSymbol*> params;
 };
 
 /**
