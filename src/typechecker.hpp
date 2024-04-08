@@ -231,6 +231,7 @@ public:
 		VarSymbol sym = VarSymbol(varname, CSELF_YOBIDASI + stackpos, stackpos, wt);
 		ctx->vs = st->insert(sym);
 		if (!ctx->vs) error(ctx, "duplicate declaration of " + varname);
+		curr_cmn->cev->cself_names.at(stackpos) = varname;
 
 		return wt;
 	}

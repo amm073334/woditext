@@ -305,10 +305,7 @@ public:
 
 		// else, assign to variable
 		VarSymbol* sym;
-		if (ctx->lhs()->decl()) {
-			ctx->lhs()->decl()->accept(this);
-			sym = ctx->lhs()->decl()->vs;
-		}
+		if (ctx->lhs()->decl()) sym = ctx->lhs()->decl()->vs;
 		else sym = ctx->lhs()->var()->vs;
 		assert(sym);
 
@@ -399,12 +396,6 @@ public:
 		}
 		curr_csym->cev->append(std::make_unique<ReturnLine>());
 
-		return std::any();
-	}
-
-	std::any visitDecl(woditextParser::DeclContext* ctx) override {
-		VarSymbol* vs = ctx->vs;
-		curr_csym->cev->cself_names.at(vs->cself_index) = vs->name;
 		return std::any();
 	}
 
