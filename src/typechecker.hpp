@@ -51,7 +51,7 @@ public:
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 
-		cf->add_common(std::make_unique<CommonEvent>());
+		CommonEvent* cev = cf->add_common(std::make_unique<CommonEvent>());
 
 		st->open_scope();
 
@@ -64,7 +64,7 @@ public:
 		else if (ctx->returntype()->T_INT()) return_type = t_int;
 		else if (ctx->returntype()->T_STR()) return_type = t_str;
 		else { error(ctx, "unknown return type"); return t_error; }
-
+		
 		// handle params
 		int num_int_params = 0;
 		int num_str_params = 0;
@@ -72,35 +72,44 @@ public:
 		std::vector<woditextParser::ParamContext*> paramctxs = ctx->param();
 		for (auto iter = paramctxs.begin(); iter != paramctxs.end(); iter++) {
 			std::string param_name = (*iter)->ID()->getText();
+			VarSymbol* vs = nullptr;
 			if ((*iter)->vartype()->T_INT()) {
 				if (num_int_params > MAX_PARAM_COUNT)
 					error(ctx, "too many int parameters in common definition");
-				VarSymbol* vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
-				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
-				params.push_back(vs);
+				vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
 				num_int_params++;
 			}
 			else if ((*iter)->vartype()->T_STR()) {
 				if (num_str_params > MAX_PARAM_COUNT)
 					error(ctx, "too many str parameters in common definition");
-				VarSymbol* vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
-				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
-				params.push_back(vs);
-				// for strings, param space is the same as variable space, so add new var here to reflect that
-				str_stack.newvar();
+				vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
 				num_str_params++;
 			}
 			else {
 				error(ctx, "unexpected param type");
+				return t_error;
 			}
+			if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
+			params.push_back(vs);
 		}
 
 		// make common event symbol
-		CommonSymbol csym(common_name, return_type, params);
-		curr_cmn = st->insert(csym);
-		if (!curr_cmn) error(ctx, "redeclaration of common '" + common_name + "'");
+		curr_cmn = st->insert(CommonSymbol(common_name, return_type, params, cev));
+		if (!curr_cmn)
+			{ error(ctx, "redeclaration of common '" + common_name + "'"); return t_error; }
+		ctx->cs = curr_cmn;
+
 		curr_cmn->cev->name = common_name;
 
+		// for strings, param space is the same as variable space, so add new vars here to account for that
+		for (auto& p : curr_cmn->params) {
+			if (p->type == t_int) curr_cmn->cev->new_int_param(p->name);
+			else if (p->type == t_str) {
+				curr_cmn->cev->new_str_param(p->name);
+				curr_cmn->str_stack.newvar();
+			} else assert(false);
+		}
+		
 		// visit code
 		std::vector<woditextParser::StmtContext*> stmts = ctx->stmt();
 		for (auto iter = stmts.begin(); iter != stmts.end(); iter++)

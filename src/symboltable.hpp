@@ -36,8 +36,8 @@ struct CommonSymbol {
 	static const int STRVAR_START = 5;
 	static const int STRVAR_END = 8;
 
-	CommonSymbol(std::string name, wod_type return_type, std::vector<VarSymbol*> params)
-		: name(name), return_type(return_type), params(params) {}
+	CommonSymbol(std::string name, wod_type return_type, std::vector<VarSymbol*> params, CommonEvent* cev)
+		: name(name), return_type(return_type), params(params), cev(cev) {}
 
 	std::string name;
 	wod_type return_type;
