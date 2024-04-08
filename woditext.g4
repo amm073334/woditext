@@ -10,6 +10,7 @@ commonlist
     ;
 
 common
+locals [CommonSymbol* cs = nullptr]
     : returntype ID '(' (param (',' param)*)? ')' '{' stmt* '}' 
     ;
 

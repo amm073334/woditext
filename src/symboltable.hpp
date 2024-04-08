@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include "doublestack.hpp"
+#include "commonevent.hpp"
 
 enum wod_type {
 	t_error,
@@ -29,12 +31,20 @@ struct VarSymbol {
 };
 
 struct CommonSymbol {
+	static const int INTVAR_START = 10;
+	static const int INTVAR_END = 98;
+	static const int STRVAR_START = 5;
+	static const int STRVAR_END = 8;
+
 	CommonSymbol(std::string name, wod_type return_type, std::vector<VarSymbol*> params)
 		: name(name), return_type(return_type), params(params) {}
 
 	std::string name;
 	wod_type return_type;
 	std::vector<VarSymbol*> params;
+	DoubleStack int_stack = DoubleStack(INTVAR_START, INTVAR_END);
+	DoubleStack str_stack = DoubleStack(STRVAR_START, STRVAR_END);
+	CommonEvent* cev;
 };
 
 /**
@@ -123,12 +133,12 @@ public:
 	/**
 	* Insert a common event into the symbol table.
 	* @param symbol		Common event prototype.
-	* @return			True if successful, false if duplicate.
+	* @return			Pointer to symbol if successful, nullptr if failed.
 	*/
-	bool insert(CommonSymbol symbol) {
+	CommonSymbol* insert(CommonSymbol symbol) {
 		std::pair<CommonTable::iterator, bool> res = common_table.insert(
 			std::make_pair(symbol.name, std::make_unique<CommonSymbol>(symbol)));
-		return res.second;
+		return res.second ? res.first->second.get() : nullptr;
 	}
 
 	/**

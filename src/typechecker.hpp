@@ -1,5 +1,6 @@
 /**
-* Builds a SymbolTable for the code generator.
+* Builds a SymbolTable for the code generator and modifies the AST to include type/symbol info.
+* Also handles variable naming in general.
 */
 
 #pragma once
@@ -10,25 +11,19 @@
 #include "commonfile.hpp"
 #include "commonevent.hpp"
 #include "doublestack.hpp"
+#include <stack>
 
 class TypeChecker : public woditextBaseVisitor {
 private:
-	static const int INT_VAR_STACK_START = 10;
-	static const int INT_TEMP_STACK_START = 98;
-	static const int STR_VAR_STACK_START = 5;
-	static const int STR_TEMP_STACK_START = 8;
-
 	// max params per type
 	static const int MAX_PARAM_COUNT = 5;
 
 	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
+	CommonFile* cf;
     SymbolTable* st;
-	wod_type current_return_type = t_void;
-
-	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
-	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
+	CommonSymbol* curr_cmn = nullptr;
 
 	void error(antlr4::ParserRuleContext* ctx, std::string message) const {
 		std::cout
@@ -52,23 +47,22 @@ private:
 	}
 
 public:
-    TypeChecker(SymbolTable* st) : st(st) {}
+    TypeChecker(CommonFile* cf, SymbolTable* st) : cf(cf), st(st) {}
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 
-		st->open_scope();
+		cf->add_common(std::make_unique<CommonEvent>());
 
-		// reset state
-		int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
-		str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
+		st->open_scope();
 
 		// name
 		std::string common_name = ctx->ID()->getText();
 
 		// handle return type
-		if (ctx->returntype()->T_VOID()) current_return_type = t_void;
-		else if (ctx->returntype()->T_INT()) current_return_type = t_int;
-		else if (ctx->returntype()->T_STR()) current_return_type = t_str;
+		wod_type return_type;
+		if (ctx->returntype()->T_VOID()) return_type = t_void;
+		else if (ctx->returntype()->T_INT()) return_type = t_int;
+		else if (ctx->returntype()->T_STR()) return_type = t_str;
 		else { error(ctx, "unknown return type"); return t_error; }
 
 		// handle params
@@ -93,7 +87,7 @@ public:
 				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
 				params.push_back(vs);
 				// for strings, param space is the same as variable space, so add new var here to reflect that
-				str_stack.push_var();
+				str_stack.newvar();
 				num_str_params++;
 			}
 			else {
@@ -102,8 +96,10 @@ public:
 		}
 
 		// make common event symbol
-		CommonSymbol csym(common_name, current_return_type, params);
-		if (!st->insert(csym)) error(ctx, "redeclaration of common '" + common_name + "'");
+		CommonSymbol csym(common_name, return_type, params);
+		curr_cmn = st->insert(csym);
+		if (!curr_cmn) error(ctx, "redeclaration of common '" + common_name + "'");
+		curr_cmn->cev->name = common_name;
 
 		// visit code
 		std::vector<woditextParser::StmtContext*> stmts = ctx->stmt();
@@ -184,7 +180,7 @@ public:
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
 		// if return is empty, then function should return void
 		if (!ctx->expr()) {
-			if (current_return_type != t_void) {
+			if (curr_cmn->return_type != t_void) {
 				error(ctx, "returned nothing in common that expects a return value");
 			}
 			return t_error;
@@ -192,8 +188,8 @@ public:
 
 		// otherwise, compare return type with expr type
 		wod_type expr_type = std::any_cast<wod_type>(ctx->expr()->accept(this));
-		if (!(current_return_type == t_int && may_be_int(expr_type))
-			&& !(current_return_type == t_str && may_be_str(expr_type))) {
+		if (!(curr_cmn->return_type == t_int && may_be_int(expr_type))
+			&& !(curr_cmn->return_type == t_str && may_be_str(expr_type))) {
 			error(ctx, "type of returned value is different from common event return type");
 		}
 		return t_error;
@@ -220,8 +216,8 @@ public:
 		else { error(ctx, "unexpected decl type"); return t_error; }
 
 		int stackpos;
-		if (wt == t_int) stackpos = int_stack.push_var();
-		else /* string */ stackpos = str_stack.push_var();
+		if (wt == t_int) stackpos = curr_cmn->int_stack.newvar();
+		else /* string */ stackpos = curr_cmn->str_stack.newvar();
 
 		VarSymbol sym = VarSymbol(varname, CSELF_YOBIDASI + stackpos, stackpos, wt);
 		ctx->vs = st->insert(sym);

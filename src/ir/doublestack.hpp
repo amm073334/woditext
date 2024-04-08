@@ -1,5 +1,5 @@
 #pragma once
-#include <stdexcept>
+#include <algorithm>
 
 /**
  * Manages two stacks to handle variable assignment in a common event:
@@ -31,27 +31,26 @@ public:
         , saved_temp_stackpos(temp_start)
     {}
     
-    void save_var() { saved_var_stackpos = var_stackpos; }
-    int push_var() {
+    int newvar() {
         if (highest_var_stackpos >= lowest_temp_stackpos) {
-            throw std::runtime_error("no more space on var stack");
+            std::cout << "exceeded maximum number of variables" << std::endl;
+            exit(1);
         }
-        int retval = var_stackpos;
-        var_stackpos++;
+        int retval = var_stackpos++;
         highest_var_stackpos = std::max(var_stackpos, highest_var_stackpos);
         return retval;
     }
-    void restore_var() { var_stackpos = saved_var_stackpos; }
-
-    void save_temp() { saved_temp_stackpos = temp_stackpos; }
-    int push_temp() {
+    
+    int newtemp() {
         if (highest_var_stackpos >= lowest_temp_stackpos) {
-            throw std::runtime_error("no more space on temp stack");
+            std::cout << "exceeded maximum number of temporary variables" << std::endl;
+            exit(1);
         }
-        int retval = temp_stackpos;
-        temp_stackpos--;
+        int retval = temp_stackpos--;
         lowest_temp_stackpos = std::min(temp_stackpos, lowest_temp_stackpos);
         return retval;
     }
+
+    void save_temp() { saved_temp_stackpos = temp_stackpos; }
     void restore_temp() { temp_stackpos = saved_temp_stackpos; }
 };
