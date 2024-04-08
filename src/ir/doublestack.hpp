@@ -33,22 +33,26 @@ public:
     
     int newvar() {
         if (highest_var_stackpos >= lowest_temp_stackpos) {
-            std::cout << "exceeded maximum number of variables" << std::endl;
+            std::cout 
+                << "exceeded maximum number of variables (" 
+                << highest_var_stackpos << " >= " << lowest_temp_stackpos 
+                << ")" << std::endl;
             exit(1);
         }
-        int retval = var_stackpos++;
         highest_var_stackpos = std::max(var_stackpos, highest_var_stackpos);
-        return retval;
+        return var_stackpos++;
     }
     
     int newtemp() {
         if (highest_var_stackpos >= lowest_temp_stackpos) {
-            std::cout << "exceeded maximum number of temporary variables" << std::endl;
+            std::cout 
+                << "exceeded maximum number of temporary variables (" 
+                << highest_var_stackpos << " >= " << lowest_temp_stackpos
+                << ")" << std::endl;
             exit(1);
         }
-        int retval = temp_stackpos--;
         lowest_temp_stackpos = std::min(temp_stackpos, lowest_temp_stackpos);
-        return retval;
+        return temp_stackpos--;
     }
 
     void save_temp() { saved_temp_stackpos = temp_stackpos; }
