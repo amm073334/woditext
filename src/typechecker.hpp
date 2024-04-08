@@ -1,6 +1,6 @@
 /**
 * Builds a SymbolTable for the code generator and modifies the AST to include type/symbol info.
-* Also handles variable naming in general.
+* Also uses cself space to assign names to cselfs.
 */
 
 #pragma once

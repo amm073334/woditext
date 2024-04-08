@@ -32,7 +32,7 @@ int main(int argc, const char* argv[])
 	TypeChecker tc(&cf, &st);
 	tc.visitCommonlist(tree);
 
-	CommonGen cg(&cf);
+	CommonGen cg;
 	cg.visitCommonlist(tree);
 
 	if (argc == 3) {
