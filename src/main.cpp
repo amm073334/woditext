@@ -29,10 +29,10 @@ int main(int argc, const char* argv[])
 	SymbolTable st;
 	CommonFile cf;
 	
-	TypeChecker tc(&st);
+	TypeChecker tc(&cf, &st);
 	tc.visitCommonlist(tree);
 
-	CommonGen cg(&st, &cf);
+	CommonGen cg;
 	cg.visitCommonlist(tree);
 
 	if (argc == 3) {

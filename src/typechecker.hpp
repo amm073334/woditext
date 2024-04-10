@@ -1,5 +1,6 @@
 /**
-* Builds a SymbolTable for the code generator.
+* Builds a SymbolTable for the code generator and modifies the AST to include type/symbol info.
+* Also uses cself space to assign names to cselfs.
 */
 
 #pragma once
@@ -10,25 +11,19 @@
 #include "commonfile.hpp"
 #include "commonevent.hpp"
 #include "doublestack.hpp"
+#include <stack>
 
 class TypeChecker : public woditextBaseVisitor {
 private:
-	static const int INT_VAR_STACK_START = 10;
-	static const int INT_TEMP_STACK_START = 98;
-	static const int STR_VAR_STACK_START = 5;
-	static const int STR_TEMP_STACK_START = 8;
-
 	// max params per type
 	static const int MAX_PARAM_COUNT = 5;
 
 	// Where the engine begins to interpret integers as local references.
 	static const int32_t CSELF_YOBIDASI = 1600000;
 
+	CommonFile* cf;
     SymbolTable* st;
-	wod_type current_return_type = t_void;
-
-	DoubleStack int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
-	DoubleStack str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
+	CommonSymbol* curr_cmn = nullptr;
 
 	void error(antlr4::ParserRuleContext* ctx, std::string message) const {
 		std::cout
@@ -45,34 +40,31 @@ private:
 	* an int or a string.
 	*/
 	bool may_be_int(wod_type wt) {
-		if (wt == t_int || wt == t_dbunknown) return true;
-		else return false;
+		return (wt == t_int || wt == t_dbunknown);
 	}
 	bool may_be_str(wod_type wt) {
-		if (wt == t_str || wt == t_strlit || wt == t_dbunknown) return true;
-		else return false;
+		return (wt == t_str || wt == t_strlit || wt == t_dbunknown);
 	}
 
 public:
-    TypeChecker(SymbolTable* st) : st(st) {}
+    TypeChecker(CommonFile* cf, SymbolTable* st) : cf(cf), st(st) {}
 
 	std::any visitCommon(woditextParser::CommonContext* ctx) override {
 
-		st->open_scope();
+		CommonEvent* cev = cf->add_common(std::make_unique<CommonEvent>());
 
-		// reset state
-		int_stack = DoubleStack(INT_VAR_STACK_START, INT_TEMP_STACK_START);
-		str_stack = DoubleStack(STR_VAR_STACK_START, STR_TEMP_STACK_START);
+		st->open_scope();
 
 		// name
 		std::string common_name = ctx->ID()->getText();
 
 		// handle return type
-		if (ctx->returntype()->T_VOID()) current_return_type = t_void;
-		else if (ctx->returntype()->T_INT()) current_return_type = t_int;
-		else if (ctx->returntype()->T_STR()) current_return_type = t_str;
+		wod_type return_type;
+		if (ctx->returntype()->T_VOID()) return_type = t_void;
+		else if (ctx->returntype()->T_INT()) return_type = t_int;
+		else if (ctx->returntype()->T_STR()) return_type = t_str;
 		else { error(ctx, "unknown return type"); return t_error; }
-
+		
 		// handle params
 		int num_int_params = 0;
 		int num_str_params = 0;
@@ -80,33 +72,44 @@ public:
 		std::vector<woditextParser::ParamContext*> paramctxs = ctx->param();
 		for (auto iter = paramctxs.begin(); iter != paramctxs.end(); iter++) {
 			std::string param_name = (*iter)->ID()->getText();
+			VarSymbol* vs = nullptr;
 			if ((*iter)->vartype()->T_INT()) {
 				if (num_int_params > MAX_PARAM_COUNT)
 					error(ctx, "too many int parameters in common definition");
-				VarSymbol* vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
-				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
-				params.push_back(vs);
+				vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_int_params, num_int_params, t_int));
 				num_int_params++;
 			}
 			else if ((*iter)->vartype()->T_STR()) {
 				if (num_str_params > MAX_PARAM_COUNT)
 					error(ctx, "too many str parameters in common definition");
-				VarSymbol* vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
-				if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
-				params.push_back(vs);
-				// for strings, param space is the same as variable space, so add new var here to reflect that
-				str_stack.push_var();
+				vs = st->insert(VarSymbol(param_name, CSELF_YOBIDASI + num_str_params, num_str_params, t_str));
 				num_str_params++;
 			}
 			else {
 				error(ctx, "unexpected param type");
+				return t_error;
 			}
+			if (!vs) error(ctx, "duplicate parameter '" + param_name + "'");
+			params.push_back(vs);
 		}
 
 		// make common event symbol
-		CommonSymbol csym(common_name, current_return_type, params);
-		if (!st->insert(csym)) error(ctx, "redeclaration of common '" + common_name + "'");
+		curr_cmn = st->insert(CommonSymbol(common_name, return_type, params, cev));
+		if (!curr_cmn)
+			{ error(ctx, "redeclaration of common '" + common_name + "'"); return t_error; }
+		ctx->cs = curr_cmn;
 
+		curr_cmn->cev->name = common_name;
+
+		// for strings, param space is the same as variable space, so add new vars here to account for that
+		for (auto& p : curr_cmn->params) {
+			if (p->type == t_int) curr_cmn->cev->new_int_param(p->name);
+			else if (p->type == t_str) {
+				curr_cmn->cev->new_str_param(p->name);
+				curr_cmn->str_stack.newvar();
+			} else assert(false);
+		}
+		
 		// visit code
 		std::vector<woditextParser::StmtContext*> stmts = ctx->stmt();
 		for (auto iter = stmts.begin(); iter != stmts.end(); iter++)
@@ -186,7 +189,7 @@ public:
 	std::any visitReturn(woditextParser::ReturnContext* ctx) override {
 		// if return is empty, then function should return void
 		if (!ctx->expr()) {
-			if (current_return_type != t_void) {
+			if (curr_cmn->return_type != t_void) {
 				error(ctx, "returned nothing in common that expects a return value");
 			}
 			return t_error;
@@ -194,8 +197,8 @@ public:
 
 		// otherwise, compare return type with expr type
 		wod_type expr_type = std::any_cast<wod_type>(ctx->expr()->accept(this));
-		if (!(current_return_type == t_int && may_be_int(expr_type))
-			&& !(current_return_type == t_str && may_be_str(expr_type))) {
+		if (!(curr_cmn->return_type == t_int && may_be_int(expr_type))
+			&& !(curr_cmn->return_type == t_str && may_be_str(expr_type))) {
 			error(ctx, "type of returned value is different from common event return type");
 		}
 		return t_error;
@@ -222,12 +225,13 @@ public:
 		else { error(ctx, "unexpected decl type"); return t_error; }
 
 		int stackpos;
-		if (wt == t_int) stackpos = int_stack.push_var();
-		else /* string */ stackpos = str_stack.push_var();
+		if (wt == t_int) stackpos = curr_cmn->int_stack.newvar();
+		else /* string */ stackpos = curr_cmn->str_stack.newvar();
 
 		VarSymbol sym = VarSymbol(varname, CSELF_YOBIDASI + stackpos, stackpos, wt);
 		ctx->vs = st->insert(sym);
 		if (!ctx->vs) error(ctx, "duplicate declaration of " + varname);
+		curr_cmn->cev->cself_names.at(stackpos) = varname;
 
 		return wt;
 	}

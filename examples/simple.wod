@@ -5,7 +5,7 @@ int test_func(int param, str string, int another) {
     adfjlk = 0x55;
     adfjlk = -0X55;
     adfjlk = 0XaF;
-    // str asdf;
+    str asdf;
     str bsdf = "ab";
     // asdf = "hello world";
     // asdf = bsdf;
