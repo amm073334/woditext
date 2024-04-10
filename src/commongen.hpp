@@ -257,11 +257,6 @@ public:
 		return std::any();
 	}
 
-	std::any visitWhileLoop(woditextParser::WhileLoopContext* ctx) override {
-		// STUB
-		return visitChildren(ctx);
-	}
-
 	std::any visitBreak(woditextParser::BreakContext* ctx) override {
 		curr_csym->cev->append(std::make_unique<BreakLine>());
 		return std::any();

@@ -36,7 +36,6 @@ vartype
 loopstmt
     : LOOP stmt                    # ForeverLoop
     | LOOP '(' expr ')' stmt       # CountLoop
-    | WHILE '(' expr ')' stmt      # WhileLoop
     ;
 
 codeblockstmt
@@ -126,7 +125,6 @@ OP_GTE: '>=';
 OP_LT: '<';
 OP_LTE: '<=';
 
-NAMESPACE_SPECIFIER: '::';
 SEMICOLON: ';';
 COMMA: ',';
 
@@ -137,7 +135,6 @@ AS_TEQ: '*=';
 AS_DEQ: '/=';
 
 LOOP: 'loop' | 'ループ';
-WHILE: 'while';
 BREAK: 'break' | 'ループ中断';
 CONTINUE: 'continue' | 'ループ開始へ';
 RETURN: 'return';

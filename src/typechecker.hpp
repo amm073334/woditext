@@ -158,15 +158,6 @@ public:
 		return t_error;
 	}
 
-	std::any visitWhileLoop(woditextParser::WhileLoopContext* ctx) override {
-		st->open_scope();
-		wod_type wt = std::any_cast<wod_type>(ctx->expr()->accept(this));
-		if (!may_be_int(wt)) error(ctx, "loop count is not a valid boolean condition");
-		ctx->stmt()->accept(this);
-		st->close_scope();
-		return t_error;
-	}
-
 	std::any visitAssign(woditextParser::AssignContext* ctx) override {
 		wod_type lhs_wt = std::any_cast<wod_type>(ctx->lhs()->accept(this));
 		wod_type expr_wt = std::any_cast<wod_type>(ctx->expr()->accept(this));
