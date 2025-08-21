@@ -1,3 +1,6 @@
+note: no longer being worked on; succeeded by wod https://github.com/amm073334/wod
+
+# woditext
 simple dsl to wrap around wolf rpg editor for text-based commonevent editing
 
 see https://github.com/amm073334/woditext-extension for simple vscode syntax highlighting
